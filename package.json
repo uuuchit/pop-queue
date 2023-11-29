@@ -1,0 +1,15 @@
+{
+  "name": "pop-queue",
+  "version": "2.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Uchit Kumar",
+  "license": "ISC",
+  "dependencies": {
+    "ioredis": "^5.3.2",
+    "mongodb": "^5.6.0"
+  }
+}
