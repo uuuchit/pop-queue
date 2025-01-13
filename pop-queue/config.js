@@ -16,4 +16,15 @@ if (fs.existsSync(configPath)) {
     config = { ...config, ...fileConfig };
 }
 
+// Validate configuration values
+const requiredConfigKeys = ['dbUrl', 'redisUrl', 'dbName', 'collectionName', 'retries'];
+requiredConfigKeys.forEach(key => {
+    if (!config[key]) {
+        throw new Error(`Missing required configuration value: ${key}`);
+    }
+    if (key === 'retries' && typeof config[key] !== 'number') {
+        throw new Error(`Invalid configuration value for ${key}: must be a number`);
+    }
+});
+
 module.exports = config;

@@ -6,7 +6,7 @@ function parseDocFromRedis(docStr) {
         doc.createdAt = new Date(doc.createdAt);
         return doc;
     } catch(err) {
-        console.log("error parsing doc from redis", e)
+        console.log("error parsing doc from redis", err)
     }
 }
 

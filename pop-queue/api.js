@@ -21,6 +21,9 @@ app.get('/api/job-details', async (req, res) => {
 app.post('/api/requeue-job', async (req, res) => {
     try {
         const { jobId } = req.body;
+        if (!jobId || typeof jobId !== 'string') {
+            return res.status(400).json({ error: 'Invalid or missing jobId' });
+        }
         await queue.requeueJob('myJob', jobId);
         res.status(200).json({ message: 'Job requeued successfully' });
     } catch (error) {

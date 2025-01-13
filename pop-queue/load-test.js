@@ -32,16 +32,20 @@ async function startLoadTest() {
     const concurrentJobs = 500000;
     const sequentialJobs = 500000;
 
-    console.log('Creating and enqueuing jobs...');
-    await createAndEnqueueJobs(totalJobs);
+    try {
+        console.log('Creating and enqueuing jobs...');
+        await createAndEnqueueJobs(totalJobs);
 
-    console.log('Running concurrent tests...');
-    await runConcurrentTests(concurrentJobs);
+        console.log('Running concurrent tests...');
+        await runConcurrentTests(concurrentJobs);
 
-    console.log('Running sequential tests...');
-    await runSequentialTests(sequentialJobs);
+        console.log('Running sequential tests...');
+        await runSequentialTests(sequentialJobs);
 
-    console.log('Load test completed.');
+        console.log('Load test completed.');
+    } catch (error) {
+        console.error('Error during load test execution:', error);
+    }
 }
 
 startLoadTest();

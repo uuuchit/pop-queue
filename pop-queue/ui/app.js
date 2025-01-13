@@ -39,9 +39,11 @@ async function requeueJob() {
             alert('Job requeued successfully');
             fetchJobDetails();
         } else {
-            alert('Failed to requeue job');
+            const errorData = await response.json();
+            alert(`Failed to requeue job: ${errorData.error}`);
         }
     } catch (error) {
         console.error('Error requeuing job:', error);
+        alert('An error occurred while requeuing the job.');
     }
 }
