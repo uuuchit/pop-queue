@@ -2,15 +2,16 @@ const { mongoClient, objectId } = require('./mongo.js');
 const { redisClient } = require('./redis.js');
 const { sleep, parseDocFromRedis } = require('./helpers.js');
 const Redlock = require('redlock');
+const config = require('./config');
 
 class PopQueue {
 
     constructor(dbUrl, redis, dbName, cName, retries, mongoShardConfig = null, redisClusterConfig = null) {
-        this.dbUrl = dbUrl;
-        this.redis = redis;
-        this.cName = cName || "pop_queues";
-        this.dbName = dbName || "circle";
-        this.retries = retries || 3;
+        this.dbUrl = dbUrl || config.dbUrl;
+        this.redis = redis || config.redisUrl;
+        this.cName = cName || config.collectionName;
+        this.dbName = dbName || config.dbName;
+        this.retries = retries || config.retries;
         this.runners = {};
         this.loopRunning = false;
         this.mongoShardConfig = mongoShardConfig;

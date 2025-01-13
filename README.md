@@ -159,6 +159,85 @@ To enable Redis clustering in your Redis deployment, follow these steps:
    redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 --cluster-replicas 1
    ```
 
+## Job Management UI
+
+A new UI has been added to manage jobs. The UI allows you to view job details and requeue jobs.
+
+### Accessing the UI
+
+To access the UI, open `pop-queue/ui/index.html` in your browser.
+
+### UI Structure
+
+The UI consists of the following components:
+
+- A container for job management tasks.
+- A button to requeue jobs.
+
+### UI Files
+
+The UI files are located in the `pop-queue/ui` directory:
+
+- `index.html`: The main HTML file for the UI.
+- `styles.css`: The CSS file for styling the UI.
+- `app.js`: The JavaScript file for handling UI interactions.
+
+## API Endpoints
+
+New API endpoints have been added to get job details and requeue jobs.
+
+### Getting Job Details
+
+To get job details, send a GET request to `/api/job-details`.
+
+Example:
+
+```bash
+curl -X GET http://localhost:3000/api/job-details
+```
+
+### Requeuing a Job
+
+To requeue a job, send a POST request to `/api/requeue-job` with the job ID in the request body.
+
+Example:
+
+```bash
+curl -X POST http://localhost:3000/api/requeue-job -H "Content-Type: application/json" -d '{"jobId": "yourJobId"}'
+```
+
+## Configuration
+
+To use this package, you need to create a configuration file and set environment variables for sensitive data. The configuration file should be named `config.json` and placed in the root directory of your project.
+
+### Configuration File
+
+Create a `config.json` file with the following structure:
+
+```json
+{
+  "dbUrl": "mongodb://localhost:27017",
+  "redisUrl": "redis://localhost:6379",
+  "dbName": "myDatabase",
+  "collectionName": "myCollection",
+  "retries": 3
+}
+```
+
+### Environment Variables
+
+Set the following environment variables for sensitive data:
+
+- `DB_URL`: MongoDB connection URL (default: `mongodb://localhost:27017`)
+- `REDIS_URL`: Redis connection URL (default: `redis://localhost:6379`)
+
+Example:
+
+```bash
+export DB_URL="mongodb://yourMongoDbUrl:27017"
+export REDIS_URL="redis://yourRedisUrl:6379"
+```
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request on GitHub.
