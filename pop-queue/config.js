@@ -8,7 +8,9 @@ let config = {
     redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
     dbName: 'myDatabase',
     collectionName: 'myCollection',
-    retries: 3
+    retries: 3,
+    workerId: process.env.WORKER_ID || `worker-${Math.random().toString(36).substr(2, 9)}`,
+    workerTimeout: process.env.WORKER_TIMEOUT || 30000
 };
 
 if (fs.existsSync(configPath)) {
@@ -17,12 +19,15 @@ if (fs.existsSync(configPath)) {
 }
 
 // Validate configuration values
-const requiredConfigKeys = ['dbUrl', 'redisUrl', 'dbName', 'collectionName', 'retries'];
+const requiredConfigKeys = ['dbUrl', 'redisUrl', 'dbName', 'collectionName', 'retries', 'workerId', 'workerTimeout'];
 requiredConfigKeys.forEach(key => {
     if (!config[key]) {
         throw new Error(`Missing required configuration value: ${key}`);
     }
     if (key === 'retries' && typeof config[key] !== 'number') {
+        throw new Error(`Invalid configuration value for ${key}: must be a number`);
+    }
+    if (key === 'workerTimeout' && typeof config[key] !== 'number') {
         throw new Error(`Invalid configuration value for ${key}: must be a number`);
     }
 });
