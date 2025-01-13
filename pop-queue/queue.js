@@ -3,6 +3,10 @@ const { redisClient } = require('./redis.js');
 const { sleep, parseDocFromRedis } = require('./helpers.js');
 const Redlock = require('redlock');
 const config = require('./config');
+const cron = require('node-cron');
+const nodemailer = require('nodemailer');
+const { WebClient } = require('@slack/web-api');
+const axios = require('axios');
 
 class PopQueue {
 
@@ -16,6 +20,13 @@ class PopQueue {
         this.loopRunning = false;
         this.mongoShardConfig = mongoShardConfig;
         this.redisClusterConfig = redisClusterConfig;
+        this.workerPool = [];
+        this.maxWorkers = 5; // Default max workers
+        this.rateLimit = 100; // Default rate limit
+        this.resourceAware = false; // Default resource-aware execution
+        this.plugins = [];
+        this.eventHooks = {};
+        this.notificationConfig = config.notificationConfig || {};
     }
 
     async define(name, fn, options = {}) {
@@ -24,6 +35,9 @@ class PopQueue {
             options,
             cName: options.cName || "pop_queues"
         };
+        if (options.middleware) {
+            this.runners[name].middleware = options.middleware;
+        }
     }
 
     async start(runLoop) {
@@ -47,7 +61,6 @@ class PopQueue {
         let names = Object.keys(this.runners);
         if (names.length) {
             this.loopRunning = true;
-            // console.log("Loop initiating");
             while (true) {
                 let counter = 0;
                 for (let name of names) {
@@ -60,7 +73,6 @@ class PopQueue {
                     }
                 }
                 if (counter == names.length) {
-                    //console.log("Loop breaking");
                     this.loopRunning = false
                     break;                    
                 }
@@ -104,25 +116,23 @@ class PopQueue {
         }
     }
 
-    async now(job, name,  identifier, score) {
+    async now(job, name, identifier, score, priority = 0, delay = 0) {
         try {
-            let document = {data: job, createdAt: new Date(), name, identifier};
+            let document = {data: job, createdAt: new Date(), name, identifier, priority, delay};
             if (!this.db) {
                 await this.connect();
                 console.log("Connected Db");
             }
             await this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({identifier}, {$set: document}, {upsert: true});
-            await this.pushToQueue(document, name, identifier, score);
+            await this.pushToQueue(document, name, identifier, score, priority, delay);
         } catch(e) {
             console.log(e);        
         }
     }
 
-    async pushToQueue(document, name, identifier, score) {
+    async pushToQueue(document, name, identifier, score, priority = 0, delay = 0) {
         try {
-            // if(!score){
-                score = new Date().getTime();
-            // }
+            score = new Date().getTime() + delay - priority;
             const pipeline = this.redisClient.pipeline();
             pipeline.zadd(`pop:queue:${name}`, score, identifier);
             pipeline.set(`pop:queue:${name}:${identifier}`, JSON.stringify(document));
@@ -135,7 +145,6 @@ class PopQueue {
     async pop(name) {
         try {
             let stringDocument = await this.redisClient.zpopmin(`pop:queue:${name}`, 1);
-            //console.log("data from redis", stringDocument);
             let valueDcoument = await this.redisClient.get(`pop:queue:${name}:${stringDocument[0]}`);
             if (!valueDcoument || stringDocument.length == 0) {
                 console.log("no document in redis");
@@ -174,6 +183,7 @@ class PopQueue {
                 }
             });
             await this.redisClient.del(`pop:queue:${name}:${document.identifier}`);
+            await this.notifySystems('jobFinished', document);
         } catch (e) {
             console.log(e)
         }
@@ -198,6 +208,8 @@ class PopQueue {
                         requeuedAt: new Date()
                     }
                 });
+                await this.moveToDeadLetterQueue(document);
+                await this.notifySystems('jobFailed', document);
             } else {
                 let newDocument = await this.db.collection(this.getDbCollectionName(document.name)).findOneAndUpdate({
                     identifier: document.identifier
@@ -231,6 +243,14 @@ class PopQueue {
             }
         } catch (e) {
             console.log(e)
+        }
+    }
+
+    async moveToDeadLetterQueue(document) {
+        try {
+            await this.db.collection('dead_letter_queue').insertOne(document);
+        } catch (e) {
+            console.log(e);
         }
     }
 
@@ -320,6 +340,58 @@ class PopQueue {
             await this.fail(doc, "Unknown, manually Requeued", true)
         } catch(e) {
             console.log(e);
+        }
+    }
+
+    async scheduleRecurringJob(name, cronExpression, jobData, identifier, priority = 0) {
+        cron.schedule(cronExpression, async () => {
+            await this.now(jobData, name, identifier, Date.now(), priority);
+        });
+    }
+
+    async addPlugin(plugin) {
+        this.plugins.push(plugin);
+    }
+
+    async emitEvent(event, data) {
+        if (this.eventHooks[event]) {
+            for (let hook of this.eventHooks[event]) {
+                await hook(data);
+            }
+        }
+    }
+
+    async on(event, hook) {
+        if (!this.eventHooks[event]) {
+            this.eventHooks[event] = [];
+        }
+        this.eventHooks[event].push(hook);
+    }
+
+    async notifySystems(event, data) {
+        if (this.notificationConfig.webhook) {
+            await axios.post(this.notificationConfig.webhook.url, {
+                event,
+                data
+            });
+        }
+
+        if (this.notificationConfig.email) {
+            let transporter = nodemailer.createTransport(this.notificationConfig.email.smtpConfig);
+            await transporter.sendMail({
+                from: this.notificationConfig.email.from,
+                to: this.notificationConfig.email.to,
+                subject: `Notification: ${event}`,
+                text: JSON.stringify(data, null, 2)
+            });
+        }
+
+        if (this.notificationConfig.slack) {
+            const slackClient = new WebClient(this.notificationConfig.slack.token);
+            await slackClient.chat.postMessage({
+                channel: this.notificationConfig.slack.channel,
+                text: `Notification: ${event}\n${JSON.stringify(data, null, 2)}`
+            });
         }
     }
 }
