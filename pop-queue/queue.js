@@ -164,8 +164,8 @@ class PopQueue {
                 }
             });
             return document;
-        } catch(e) {
-            console.log(e);        
+        } catch(err) {
+            console.log("error parsing doc from redis", err);
         }
     }
 
