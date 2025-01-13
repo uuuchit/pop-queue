@@ -206,6 +206,38 @@ Example:
 curl -X POST http://localhost:3000/api/requeue-job -H "Content-Type: application/json" -d '{"jobId": "yourJobId"}'
 ```
 
+## Configuration
+
+To use this package, you need to create a configuration file and set environment variables for sensitive data. The configuration file should be named `config.json` and placed in the root directory of your project.
+
+### Configuration File
+
+Create a `config.json` file with the following structure:
+
+```json
+{
+  "dbUrl": "mongodb://localhost:27017",
+  "redisUrl": "redis://localhost:6379",
+  "dbName": "myDatabase",
+  "collectionName": "myCollection",
+  "retries": 3
+}
+```
+
+### Environment Variables
+
+Set the following environment variables for sensitive data:
+
+- `DB_URL`: MongoDB connection URL (default: `mongodb://localhost:27017`)
+- `REDIS_URL`: Redis connection URL (default: `redis://localhost:6379`)
+
+Example:
+
+```bash
+export DB_URL="mongodb://yourMongoDbUrl:27017"
+export REDIS_URL="redis://yourRedisUrl:6379"
+```
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request on GitHub.
