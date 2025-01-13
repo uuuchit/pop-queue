@@ -1,11 +1,11 @@
-
 const { mongoClient, objectId } = require('./mongo.js');
 const { redisClient } = require('./redis.js');
 const { sleep, parseDocFromRedis } = require('./helpers.js');
+const Redlock = require('redlock');
 
 class PopQueue {
 
-    constructor(dbUrl, redis, dbName, cName, retries) {
+    constructor(dbUrl, redis, dbName, cName, retries, mongoShardConfig = null, redisClusterConfig = null) {
         this.dbUrl = dbUrl;
         this.redis = redis;
         this.cName = cName || "pop_queues";
@@ -13,6 +13,8 @@ class PopQueue {
         this.retries = retries || 3;
         this.runners = {};
         this.loopRunning = false;
+        this.mongoShardConfig = mongoShardConfig;
+        this.redisClusterConfig = redisClusterConfig;
     }
 
     async define(name, fn, options = {}) {
@@ -73,6 +75,11 @@ class PopQueue {
         try {
             this.db =  await mongoClient(this.dbUrl, this.dbName);
             console.log('db connected');
+            if (this.mongoShardConfig) {
+                await this.db.admin().command({ enableSharding: this.dbName });
+                await this.db.admin().command({ shardCollection: `${this.dbName}.${this.cName}`, key: this.mongoShardConfig });
+                console.log('MongoDB sharding enabled');
+            }
         } catch(e) {
             console.log(e);        
         }
@@ -80,8 +87,17 @@ class PopQueue {
 
     async connectRedis() {
         try {
-            this.redisClient =  await redisClient(this.redis);
-            console.log('redis connected');
+            if (this.redisClusterConfig) {
+                this.redisClient = new Redis.Cluster(this.redisClusterConfig);
+                console.log('Redis cluster connected');
+            } else {
+                this.redisClient =  await redisClient(this.redis);
+                console.log('redis connected');
+            }
+            this.redlock = new Redlock([this.redisClient], {
+                retryCount: 10,
+                retryDelay: 200
+            });
         } catch(e) {
             console.log(e);        
         }
@@ -106,8 +122,10 @@ class PopQueue {
             // if(!score){
                 score = new Date().getTime();
             // }
-            await this.redisClient.zadd(`pop:queue:${name}`,score, identifier);
-            await this.redisClient.set(`pop:queue:${name}:${identifier}`, JSON.stringify(document));
+            const pipeline = this.redisClient.pipeline();
+            pipeline.zadd(`pop:queue:${name}`, score, identifier);
+            pipeline.set(`pop:queue:${name}:${identifier}`, JSON.stringify(document));
+            await pipeline.exec();
         } catch (e) {
             console.log(e);
         }
