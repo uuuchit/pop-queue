@@ -206,6 +206,65 @@ Example:
 curl -X POST http://localhost:3000/api/requeue-job -H "Content-Type: application/json" -d '{"jobId": "yourJobId"}'
 ```
 
+## gRPC Endpoints
+
+New gRPC endpoints have been added to allow non-JavaScript applications to interact with the job system.
+
+### Getting Job Details
+
+To get job details, use the `GetJobDetails` gRPC method.
+
+Example:
+
+```protobuf
+syntax = "proto3";
+
+package popqueue;
+
+service PopQueue {
+  rpc GetJobDetails (JobDetailsRequest) returns (JobDetailsResponse);
+}
+
+message JobDetailsRequest {}
+
+message JobDetailsResponse {
+  repeated JobDetail jobDetails = 1;
+}
+
+message JobDetail {
+  string name = 1;
+  string identifier = 2;
+  string status = 3;
+  string createdAt = 4;
+  string pickedAt = 5;
+  string finishedAt = 6;
+}
+```
+
+### Requeuing a Job
+
+To requeue a job, use the `RequeueJob` gRPC method.
+
+Example:
+
+```protobuf
+syntax = "proto3";
+
+package popqueue;
+
+service PopQueue {
+  rpc RequeueJob (RequeueJobRequest) returns (RequeueJobResponse);
+}
+
+message RequeueJobRequest {
+  string jobId = 1;
+}
+
+message RequeueJobResponse {
+  string message = 1;
+}
+```
+
 ## Configuration
 
 To use this package, you need to create a configuration file and set environment variables for sensitive data. The configuration file should be named `config.json` and placed in the root directory of your project.

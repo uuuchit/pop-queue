@@ -1,5 +1,8 @@
 const express = require('express');
 const { PopQueue } = require('./queue');
+const grpc = require('@grpc/grpc-js');
+const protoLoader = require('@grpc/proto-loader');
+const path = require('path');
 
 const app = express();
 const port = 3000;
@@ -62,6 +65,67 @@ app.post('/api/redistribute-jobs', async (req, res) => {
     }
 });
 
+// gRPC server setup
+const PROTO_PATH = path.resolve(__dirname, 'popqueue.proto');
+const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
+    keepCase: true,
+    longs: String,
+    enums: String,
+    defaults: true,
+    oneofs: true
+});
+const popqueueProto = grpc.loadPackageDefinition(packageDefinition).popqueue;
+
+function getJobDetails(call, callback) {
+    queue.getCurrentQueue('myJob')
+        .then(jobDetails => callback(null, { jobDetails }))
+        .catch(error => callback(error));
+}
+
+function requeueJob(call, callback) {
+    const jobId = call.request.jobId;
+    if (!jobId || typeof jobId !== 'string') {
+        return callback({
+            code: grpc.status.INVALID_ARGUMENT,
+            message: 'Invalid or missing jobId'
+        });
+    }
+    queue.requeueJob('myJob', jobId)
+        .then(() => callback(null, { message: 'Job requeued successfully' }))
+        .catch(error => callback(error));
+}
+
+function registerWorker(call, callback) {
+    queue.registerWorker()
+        .then(() => callback(null, { message: 'Worker registered successfully' }))
+        .catch(error => callback(error));
+}
+
+function deregisterWorker(call, callback) {
+    queue.deregisterWorker()
+        .then(() => callback(null, { message: 'Worker deregistered successfully' }))
+        .catch(error => callback(error));
+}
+
+function redistributeJobs(call, callback) {
+    queue.redistributeJobs()
+        .then(() => callback(null, { message: 'Jobs redistributed successfully' }))
+        .catch(error => callback(error));
+}
+
+const server = new grpc.Server();
+server.addService(popqueueProto.PopQueue.service, {
+    getJobDetails,
+    requeueJob,
+    registerWorker,
+    deregisterWorker,
+    redistributeJobs
+});
+server.bindAsync('0.0.0.0:50051', grpc.ServerCredentials.createInsecure(), () => {
+    server.start();
+    console.log('gRPC server running at http://0.0.0.0:50051');
+});
+
 app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+    console.log(`REST server running at http://localhost:${port}`);
 });
