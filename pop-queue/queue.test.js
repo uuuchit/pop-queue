@@ -214,4 +214,47 @@ describe('PopQueue', () => {
             { new: true }
         );
     });
+
+    test('should create and enqueue jobs for load test', async () => {
+        const jobCount = 1000;
+        const jobData = { data: `jobData0` };
+        const jobName = 'loadTestJob';
+        const jobIdentifier = `jobIdentifier0`;
+        const jobScore = Date.now();
+
+        await queue.createAndEnqueueJobs(jobCount);
+
+        expect(dbMock.collection).toHaveBeenCalledWith('testCollection');
+        expect(dbMock.findOneAndUpdate).toHaveBeenCalledWith(
+            { identifier: jobIdentifier },
+            { $set: { data: jobData, createdAt: expect.any(Date), name: jobName, identifier: jobIdentifier } },
+            { upsert: true }
+        );
+        expect(redisMock.zadd).toHaveBeenCalledWith(`pop:queue:${jobName}`, jobScore, jobIdentifier);
+        expect(redisMock.set).toHaveBeenCalledWith(`pop:queue:${jobName}:${jobIdentifier}`, expect.any(String));
+    });
+
+    test('should run concurrent tests for load test', async () => {
+        const concurrentJobCount = 1000;
+
+        redisMock.zpopmin.mockResolvedValue(['jobIdentifier0']);
+        redisMock.get.mockResolvedValue(JSON.stringify({ data: 'jobData0', createdAt: new Date(), name: 'loadTestJob', identifier: 'jobIdentifier0' }));
+
+        await queue.runConcurrentTests(concurrentJobCount);
+
+        expect(redisMock.zpopmin).toHaveBeenCalledWith('pop:queue:loadTestJob', 1);
+        expect(redisMock.get).toHaveBeenCalledWith('pop:queue:loadTestJob:jobIdentifier0');
+    });
+
+    test('should run sequential tests for load test', async () => {
+        const sequentialJobCount = 1000;
+
+        redisMock.zpopmin.mockResolvedValue(['jobIdentifier0']);
+        redisMock.get.mockResolvedValue(JSON.stringify({ data: 'jobData0', createdAt: new Date(), name: 'loadTestJob', identifier: 'jobIdentifier0' }));
+
+        await queue.runSequentialTests(sequentialJobCount);
+
+        expect(redisMock.zpopmin).toHaveBeenCalledWith('pop:queue:loadTestJob', 1);
+        expect(redisMock.get).toHaveBeenCalledWith('pop:queue:loadTestJob:jobIdentifier0');
+    });
 });

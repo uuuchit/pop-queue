@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "load-test": "node pop-queue/load-test.js"
   },
   "author": "Uchit Kumar",
   "license": "ISC",

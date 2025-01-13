@@ -358,3 +358,17 @@ This project is licensed under the ISC License.
 - **Notify systems or developers when tasks are completed, fail, or require attention (e.g., via email, Slack, or webhooks).**
 - **Webhook and notifications**: Allow users to set config for webhook and notifications like email or Slack, and perform those notifications based on the config.
 - **Notification parameters**: Take parameters for notifications.
+
+## Load Testing
+
+A new load testing script has been added to simulate 1 million jobs with concurrent and sequential tests.
+
+### Running the Load Test
+
+To run the load test, use the following command:
+
+```bash
+npm run load-test
+```
+
+The load test will create and enqueue 1 million jobs, then run concurrent and sequential tests to simulate different load scenarios.
