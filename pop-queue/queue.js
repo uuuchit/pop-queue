@@ -1,5 +1,7 @@
 const { mongoClient, objectId } = require('./mongo.js');
 const { redisClient } = require('./redis.js');
+const { memcachedClient } = require('./memcached.js');
+const { postgresClient } = require('./postgres.js');
 const { sleep, parseDocFromRedis } = require('./helpers.js');
 const Redlock = require('redlock');
 const config = require('./config');
@@ -10,7 +12,7 @@ const axios = require('axios');
 
 class PopQueue {
 
-    constructor(dbUrl, redis, dbName, cName, retries, mongoShardConfig = null, redisClusterConfig = null, workerId = null) {
+    constructor(dbUrl, redis, dbName, cName, retries, mongoShardConfig = null, redisClusterConfig = null, workerId = null, memcachedUrl = null, postgresUrl = null) {
         this.dbUrl = dbUrl || config.dbUrl;
         this.redis = redis || config.redisUrl;
         this.cName = cName || config.collectionName;
@@ -29,6 +31,8 @@ class PopQueue {
         this.notificationConfig = config.notificationConfig || {};
         this.workerId = workerId || `worker-${Math.random().toString(36).substr(2, 9)}`;
         this.workerTimeout = config.workerTimeout || 30000;
+        this.memcachedUrl = memcachedUrl || config.memcachedUrl;
+        this.postgresUrl = postgresUrl || config.postgresUrl;
     }
 
     async define(name, fn, options = {}) {
@@ -90,15 +94,21 @@ class PopQueue {
 
     async connectDb() {
         try {
-            this.db =  await mongoClient(this.dbUrl, this.dbName);
-            console.log('db connected');
-            if (this.mongoShardConfig) {
-                await this.db.admin().command({ enableSharding: this.dbName });
-                await this.db.admin().command({ shardCollection: `${this.dbName}.${this.cName}`, key: this.mongoShardConfig });
-                console.log('MongoDB sharding enabled');
+            if (this.dbUrl.startsWith('postgres://')) {
+                this.db = await postgresClient(this.dbUrl);
+                console.log('PostgreSQL connected');
+                await this.setupPostgresSchema();
+            } else {
+                this.db = await mongoClient(this.dbUrl, this.dbName);
+                console.log('MongoDB connected');
+                if (this.mongoShardConfig) {
+                    await this.db.admin().command({ enableSharding: this.dbName });
+                    await this.db.admin().command({ shardCollection: `${this.dbName}.${this.cName}`, key: this.mongoShardConfig });
+                    console.log('MongoDB sharding enabled');
+                }
             }
-        } catch(e) {
-            console.log(e);        
+        } catch (e) {
+            console.log(e);
         }
     }
 
@@ -107,17 +117,43 @@ class PopQueue {
             if (this.redisClusterConfig) {
                 this.redisClient = new Redis.Cluster(this.redisClusterConfig);
                 console.log('Redis cluster connected');
+            } else if (this.redis.startsWith('memcached://')) {
+                this.redisClient = await memcachedClient(this.redis);
+                console.log('Memcached connected');
             } else {
-                this.redisClient =  await redisClient(this.redis);
-                console.log('redis connected');
+                this.redisClient = await redisClient(this.redis);
+                console.log('Redis connected');
             }
             this.redlock = new Redlock([this.redisClient], {
                 retryCount: 10,
                 retryDelay: 200
             });
-        } catch(e) {
-            console.log(e);        
+        } catch (e) {
+            console.log(e);
         }
+    }
+
+    async setupPostgresSchema() {
+        const createTableQuery = `
+            CREATE TABLE IF NOT EXISTS ${this.cName} (
+                id SERIAL PRIMARY KEY,
+                data JSONB,
+                createdAt TIMESTAMP,
+                name VARCHAR(255),
+                identifier VARCHAR(255) UNIQUE,
+                priority INT,
+                delay INT,
+                pickedAt TIMESTAMP,
+                finishedAt TIMESTAMP,
+                attempts INT DEFAULT 0,
+                status VARCHAR(50),
+                duration INT,
+                requeuedAt TIMESTAMP,
+                failedReason JSONB,
+                runHistory JSONB
+            );
+        `;
+        await this.db.query(createTableQuery);
     }
 
     async now(job, name, identifier, score, priority = 0, delay = 0) {
@@ -127,7 +163,21 @@ class PopQueue {
                 await this.connect();
                 console.log("Connected Db");
             }
-            await this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({identifier}, {$set: document}, {upsert: true});
+            if (this.dbUrl.startsWith('postgres://')) {
+                const insertQuery = `
+                    INSERT INTO ${this.cName} (data, createdAt, name, identifier, priority, delay)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    ON CONFLICT (identifier) DO UPDATE SET
+                    data = EXCLUDED.data,
+                    createdAt = EXCLUDED.createdAt,
+                    name = EXCLUDED.name,
+                    priority = EXCLUDED.priority,
+                    delay = EXCLUDED.delay;
+                `;
+                await this.db.query(insertQuery, [document.data, document.createdAt, document.name, document.identifier, document.priority, document.delay]);
+            } else {
+                await this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({identifier}, {$set: document}, {upsert: true});
+            }
             await this.pushToQueue(document, name, identifier, score, priority, delay);
         } catch(e) {
             console.log(e);        
@@ -159,16 +209,25 @@ class PopQueue {
             let document = parseDocFromRedis(valueDcoument);
             let pickedTime = new Date();
             document.pickedAt = pickedTime;
-            await this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({
-                identifier: document.identifier
-            }, {
-                $inc: {
-                    attempts: 1
-                },
-                $set: {
-                    pickedAt: new Date(pickedTime)
-                }
-            });
+            if (this.dbUrl.startsWith('postgres://')) {
+                const updateQuery = `
+                    UPDATE ${this.cName}
+                    SET attempts = attempts + 1, pickedAt = $1
+                    WHERE identifier = $2;
+                `;
+                await this.db.query(updateQuery, [pickedTime, document.identifier]);
+            } else {
+                await this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({
+                    identifier: document.identifier
+                }, {
+                    $inc: {
+                        attempts: 1
+                    },
+                    $set: {
+                        pickedAt: new Date(pickedTime)
+                    }
+                });
+            }
             await lock.unlock();
             return document;
         } catch(err) {
@@ -179,16 +238,25 @@ class PopQueue {
     async finish(document, name) {
         try {
             let finishTime = new Date();
-            await this.db.collection(this.getDbCollectionName(document.name)).findOneAndUpdate({
-                identifier: document.identifier
-            }, {
-                $set: {
-                    finishedAt: finishTime,
-                    duration: finishTime - document.pickedAt,
-                    delay: finishTime - document.createdAt,
-                    status: 'done'
-                }
-            });
+            if (this.dbUrl.startsWith('postgres://')) {
+                const updateQuery = `
+                    UPDATE ${this.cName}
+                    SET finishedAt = $1, duration = $2, delay = $3, status = 'done'
+                    WHERE identifier = $4;
+                `;
+                await this.db.query(updateQuery, [finishTime, finishTime - document.pickedAt, finishTime - document.createdAt, document.identifier]);
+            } else {
+                await this.db.collection(this.getDbCollectionName(document.name)).findOneAndUpdate({
+                    identifier: document.identifier
+                }, {
+                    $set: {
+                        finishedAt: finishTime,
+                        duration: finishTime - document.pickedAt,
+                        delay: finishTime - document.createdAt,
+                        status: 'done'
+                    }
+                });
+            }
             await this.redisClient.del(`pop:queue:${name}:${document.identifier}`);
             await this.notifySystems('jobFinished', document);
         } catch (e) {
@@ -200,52 +268,83 @@ class PopQueue {
         try {
             if (document.attempts >= this.retries && !force) {
                 let finishTime = new Date();
-                await this.db.collection(this.getDbCollectionName(document.name)).findOneAndUpdate({
-                    identifier: document.identifier
-                }, {
-                    $push: {
-                        failedReason: {
-                            reason, 
-                            time: new Date()
+                if (this.dbUrl.startsWith('postgres://')) {
+                    const updateQuery = `
+                        UPDATE ${this.cName}
+                        SET finishedAt = $1, status = 'failed', requeuedAt = $2, failedReason = COALESCE(failedReason, '[]'::jsonb) || $3::jsonb
+                        WHERE identifier = $4;
+                    `;
+                    await this.db.query(updateQuery, [finishTime, new Date(), JSON.stringify({ reason, time: new Date() }), document.identifier]);
+                } else {
+                    await this.db.collection(this.getDbCollectionName(document.name)).findOneAndUpdate({
+                        identifier: document.identifier
+                    }, {
+                        $push: {
+                            failedReason: {
+                                reason, 
+                                time: new Date()
+                            },
                         },
-                    },
-                    $set: {
-                        finishedAt: finishTime,
-                        status: 'failed',
-                        requeuedAt: new Date()
-                    }
-                });
+                        $set: {
+                            finishedAt: finishTime,
+                            status: 'failed',
+                            requeuedAt: new Date()
+                        }
+                    });
+                }
                 await this.moveToDeadLetterQueue(document);
                 await this.notifySystems('jobFailed', document);
             } else {
-                let newDocument = await this.db.collection(this.getDbCollectionName(document.name)).findOneAndUpdate({
-                    identifier: document.identifier
-                }, {
-                    $unset: {
-                        pickedAt: 1,
-                        finishedAt: 1,
-                        status: 1,
-                        duration: 1
-                    },
-                    $push: {
-                        failedReason: {
-                            reason, 
-                            time: new Date()
-                        },
-                        runHistory: {
-                            pickedAt: document.pickedAt,
-                            finishedAt: document.finishedAt,
-                            status: document.status,
-                            duration: document.duration
-                        }
-                    },
-                    $set: {
-                        requeuedAt: new Date()
+                if (this.dbUrl.startsWith('postgres://')) {
+                    const updateQuery = `
+                        UPDATE ${this.cName}
+                        SET pickedAt = NULL, finishedAt = NULL, status = NULL, duration = NULL, requeuedAt = $1,
+                        failedReason = COALESCE(failedReason, '[]'::jsonb) || $2::jsonb,
+                        runHistory = COALESCE(runHistory, '[]'::jsonb) || $3::jsonb
+                        WHERE identifier = $4
+                        RETURNING *;
+                    `;
+                    const result = await this.db.query(updateQuery, [new Date(), JSON.stringify({ reason, time: new Date() }), JSON.stringify({
+                        pickedAt: document.pickedAt,
+                        finishedAt: document.finishedAt,
+                        status: document.status,
+                        duration: document.duration
+                    }), document.identifier]);
+                    const newDocument = result.rows[0];
+                    if (newDocument) {
+                        await sleep(2000);
+                        await this.pushToQueue(newDocument, newDocument.name, newDocument.identifier);
                     }
-                }, {new: true});
-                if(newDocument.value && newDocument.value.name) {
-                    await sleep(2000);
-                    await this.pushToQueue(newDocument.value, newDocument.value.name, newDocument.value.identifier);
+                } else {
+                    let newDocument = await this.db.collection(this.getDbCollectionName(document.name)).findOneAndUpdate({
+                        identifier: document.identifier
+                    }, {
+                        $unset: {
+                            pickedAt: 1,
+                            finishedAt: 1,
+                            status: 1,
+                            duration: 1
+                        },
+                        $push: {
+                            failedReason: {
+                                reason, 
+                                time: new Date()
+                            },
+                            runHistory: {
+                                pickedAt: document.pickedAt,
+                                finishedAt: document.finishedAt,
+                                status: document.status,
+                                duration: document.duration
+                            }
+                        },
+                        $set: {
+                            requeuedAt: new Date()
+                        }
+                    }, {new: true});
+                    if(newDocument.value && newDocument.value.name) {
+                        await sleep(2000);
+                        await this.pushToQueue(newDocument.value, newDocument.value.name, newDocument.value.identifier);
+                    }
                 }
             }
         } catch (e) {
@@ -255,7 +354,15 @@ class PopQueue {
 
     async moveToDeadLetterQueue(document) {
         try {
-            await this.db.collection('dead_letter_queue').insertOne(document);
+            if (this.dbUrl.startsWith('postgres://')) {
+                const insertQuery = `
+                    INSERT INTO dead_letter_queue (data, createdAt, name, identifier, priority, delay, pickedAt, finishedAt, attempts, status, duration, requeuedAt, failedReason, runHistory)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);
+                `;
+                await this.db.query(insertQuery, [document.data, document.createdAt, document.name, document.identifier, document.priority, document.delay, document.pickedAt, document.finishedAt, document.attempts, document.status, document.duration, document.requeuedAt, document.failedReason, document.runHistory]);
+            } else {
+                await this.db.collection('dead_letter_queue').insertOne(document);
+            }
         } catch (e) {
             console.log(e);
         }
