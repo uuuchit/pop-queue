@@ -220,7 +220,29 @@ Create a `config.json` file with the following structure:
   "redisUrl": "redis://localhost:6379",
   "dbName": "myDatabase",
   "collectionName": "myCollection",
-  "retries": 3
+  "retries": 3,
+  "notificationConfig": {
+    "webhook": {
+      "url": "https://example.com/webhook"
+    },
+    "email": {
+      "smtpConfig": {
+        "host": "smtp.example.com",
+        "port": 587,
+        "secure": false,
+        "auth": {
+          "user": "user@example.com",
+          "pass": "password"
+        }
+      },
+      "from": "no-reply@example.com",
+      "to": "admin@example.com"
+    },
+    "slack": {
+      "token": "xoxb-your-slack-token",
+      "channel": "#notifications"
+    }
+  }
 }
 ```
 
@@ -245,3 +267,94 @@ Contributions are welcome! Please open an issue or submit a pull request on GitH
 ## License
 
 This project is licensed under the ISC License.
+
+## Core Features
+
+### Task Scheduling
+
+- **Priority-based execution**: Allow tasks to have different priorities and execute high-priority tasks first.
+- **Delayed jobs**: Schedule tasks to run after a specific delay.
+- **Recurring jobs**: Support cron-like recurring tasks.
+- **Immediate jobs**: Execute tasks immediately upon submission.
+
+### Concurrency Control
+
+- **Worker pools**: Limit the number of tasks being processed simultaneously.
+- **Rate limiting**: Prevent tasks from overloading the system by capping execution rates.
+- **Resource-aware execution**: Dynamically adjust concurrency based on available resources (e.g., CPU, memory).
+
+### Persistence
+
+- **Task durability**: Store tasks persistently so they survive application crashes or restarts.
+- **Retry policies**: Automatically retry failed tasks based on predefined rules.
+- **Dead letter queues**: Move repeatedly failing tasks to a separate queue for manual review.
+
+### Distributed Execution
+
+- **Cluster support**: Allow multiple instances of the application to process jobs in parallel.
+- **Load balancing**: Distribute jobs evenly across available workers.
+- **Fault tolerance**: Handle worker failures gracefully by redistributing uncompleted tasks.
+
+## Developer-Focused Features
+
+### API Design
+
+- **Simple and expressive APIs**: Provide intuitive methods to enqueue, process, and monitor jobs.
+- **Middleware support**: Allow custom logic to be applied to jobs during enqueueing or execution.
+
+### Extensibility
+
+- **Custom plugins**: Enable developers to extend functionality (e.g., custom storage backends, advanced monitoring).
+- **Event hooks**: Emit events for various task lifecycle stages (e.g., onStart, onComplete, onError).
+
+### Monitoring and Debugging
+
+- **Real-time dashboards**: Visualize job queues, worker performance, and task statuses.
+- **Logging**: Provide detailed logs for debugging and analysis.
+- **Error tracking**: Record and expose detailed error information for failed tasks.
+
+## Performance-Oriented Features
+
+### Scalability
+
+- **Horizontal scaling**: Add more workers or nodes to increase throughput.
+- **Efficient data structures**: Use optimized queues or priority heaps for managing jobs.
+- **Memory management**: Avoid memory leaks and ensure efficient use of system resources.
+
+### High Throughput
+
+- **Batch processing**: Support batching tasks for efficient execution.
+- **Parallelism**: Leverage multi-threading or asynchronous operations for high performance.
+
+### Lightweight
+
+- **Low overhead**: Minimize the resource footprint to ensure the library doesn’t slow down the application.
+- **Optimized dependencies**: Use minimal and performant third-party dependencies.
+
+## Security and Reliability
+
+### Security
+
+- **Access control**: Restrict job management APIs to authorized users or systems.
+- **Input validation**: Ensure task data is validated to prevent injection or misuse.
+- **Data encryption**: Secure sensitive job data in transit and at rest.
+
+### Reliability
+
+- **Task deduplication**: Avoid processing the same task multiple times in error.
+- **Graceful shutdown**: Safely pause and complete tasks during application shutdown.
+- **State snapshots**: Provide point-in-time recovery by saving the state of queues and workers.
+
+## Integration Features
+
+### Ecosystem Compatibility
+
+- **Database support**: Integrate with popular databases (e.g., Redis, MongoDB, PostgreSQL) for job storage.
+- **Framework integrations**: Provide plugins or extensions for popular frameworks (e.g., Express, NestJS, Next.js).
+- **Language interop**: Allow non-JavaScript applications to interact with the job system via APIs or protocols (e.g., REST, gRPC).
+
+### Notification Systems
+
+- **Notify systems or developers when tasks are completed, fail, or require attention (e.g., via email, Slack, or webhooks).**
+- **Webhook and notifications**: Allow users to set config for webhook and notifications like email or Slack, and perform those notifications based on the config.
+- **Notification parameters**: Take parameters for notifications.
