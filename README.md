@@ -2,7 +2,7 @@
 
 ## Overview
 
-`pop-queue` is a library for managing job queues using MongoDB and Redis. It allows you to define, enqueue, and process jobs with ease. The library is designed to handle high concurrency and large-scale systems.
+`pop-queue` is a library for managing job queues using MongoDB, Redis, Memcached, and PostgreSQL. It allows you to define, enqueue, and process jobs with ease. The library is designed to handle high concurrency and large-scale systems.
 
 ## Installation
 
@@ -108,12 +108,46 @@ queue.now({ data: 'fail' }, 'myJob', 'jobIdentifier', Date.now());
 queue.start();
 ```
 
+### Example 3: Using Memcached
+
+```javascript
+const { PopQueue } = require('pop-queue');
+
+const queue = new PopQueue('mongodb://localhost:27017', 'memcached://localhost:11211', 'myDatabase', 'myCollection', 3);
+
+queue.define('myJob', async (job) => {
+  console.log('Processing job:', job);
+  return true;
+});
+
+queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
+
+queue.start();
+```
+
+### Example 4: Using PostgreSQL
+
+```javascript
+const { PopQueue } = require('pop-queue');
+
+const queue = new PopQueue('postgres://localhost:5432', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
+
+queue.define('myJob', async (job) => {
+  console.log('Processing job:', job);
+  return true;
+});
+
+queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
+
+queue.start();
+```
+
 ## Scaling and Performance
 
 To scale the library for millions of users and sessions, consider the following:
 
 1. Use Redis locks to handle race conditions.
-2. Optimize MongoDB and Redis queries for better performance.
+2. Optimize MongoDB, Redis, Memcached, and PostgreSQL queries for better performance.
 3. Use sharding and replication for MongoDB to distribute the load.
 4. Use Redis clustering to handle large datasets and high throughput.
 5. Monitor the performance of your system and adjust the configuration as needed.
@@ -277,6 +311,8 @@ Create a `config.json` file with the following structure:
 {
   "dbUrl": "mongodb://localhost:27017",
   "redisUrl": "redis://localhost:6379",
+  "memcachedUrl": "memcached://localhost:11211",
+  "postgresUrl": "postgres://localhost:5432",
   "dbName": "myDatabase",
   "collectionName": "myCollection",
   "retries": 3,
@@ -309,8 +345,8 @@ Create a `config.json` file with the following structure:
 
 Set the following environment variables for sensitive data:
 
-- `DB_URL`: MongoDB connection URL (default: `mongodb://localhost:27017`)
-- `REDIS_URL`: Redis connection URL (default: `redis://localhost:6379`)
+- `DB_URL`: MongoDB or PostgreSQL connection URL (default: `mongodb://localhost:27017`)
+- `REDIS_URL`: Redis or Memcached connection URL (default: `redis://localhost:6379`)
 
 Example:
 
@@ -405,6 +441,10 @@ spec:
           value: "mongodb://yourMongoDbUrl:27017"
         - name: REDIS_URL
           value: "redis://yourRedisUrl:6379"
+        - name: MEMCACHED_URL
+          value: "memcached://yourMemcachedUrl:11211"
+        - name: POSTGRES_URL
+          value: "postgres://yourPostgresUrl:5432"
         - name: WORKER_ID
           valueFrom:
             fieldRef:
