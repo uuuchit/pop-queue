@@ -28,6 +28,7 @@ class PopQueue {
         this.eventHooks = {};
         this.notificationConfig = config.notificationConfig || {};
         this.workerId = workerId || `worker-${Math.random().toString(36).substr(2, 9)}`;
+        this.workerTimeout = config.workerTimeout || 30000;
     }
 
     async define(name, fn, options = {}) {
@@ -49,6 +50,7 @@ class PopQueue {
                 await this.startLoop();
             }
         }, 1000)
+        this.startHeartbeat();
     }
 
     getDbCollectionName(name) {
@@ -414,6 +416,16 @@ class PopQueue {
         } catch (e) {
             console.log(e);
         }
+    }
+
+    async startHeartbeat() {
+        setInterval(async () => {
+            try {
+                await this.redisClient.set(`worker:${this.workerId}:heartbeat`, Date.now(), 'PX', this.workerTimeout);
+            } catch (e) {
+                console.log(e);
+            }
+        }, this.workerTimeout / 2);
     }
 
     async redistributeJobs() {
