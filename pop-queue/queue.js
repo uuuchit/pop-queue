@@ -10,7 +10,7 @@ const axios = require('axios');
 
 class PopQueue {
 
-    constructor(dbUrl, redis, dbName, cName, retries, mongoShardConfig = null, redisClusterConfig = null) {
+    constructor(dbUrl, redis, dbName, cName, retries, mongoShardConfig = null, redisClusterConfig = null, workerId = null) {
         this.dbUrl = dbUrl || config.dbUrl;
         this.redis = redis || config.redisUrl;
         this.cName = cName || config.collectionName;
@@ -27,6 +27,7 @@ class PopQueue {
         this.plugins = [];
         this.eventHooks = {};
         this.notificationConfig = config.notificationConfig || {};
+        this.workerId = workerId || `worker-${Math.random().toString(36).substr(2, 9)}`;
     }
 
     async define(name, fn, options = {}) {
@@ -41,6 +42,7 @@ class PopQueue {
     }
 
     async start(runLoop) {
+        await this.registerWorker();
         await this.startLoop();
         setInterval(async () => {
             if (!this.loopRunning) {
@@ -144,10 +146,12 @@ class PopQueue {
 
     async pop(name) {
         try {
+            const lock = await this.redlock.lock(`locks:pop:queue:${name}`, 1000);
             let stringDocument = await this.redisClient.zpopmin(`pop:queue:${name}`, 1);
             let valueDcoument = await this.redisClient.get(`pop:queue:${name}:${stringDocument[0]}`);
             if (!valueDcoument || stringDocument.length == 0) {
                 console.log("no document in redis");
+                await lock.unlock();
                 return null;
             }
             let document = parseDocFromRedis(valueDcoument);
@@ -163,6 +167,7 @@ class PopQueue {
                     pickedAt: new Date(pickedTime)
                 }
             });
+            await lock.unlock();
             return document;
         } catch(err) {
             console.log("error parsing doc from redis", err);
@@ -392,6 +397,40 @@ class PopQueue {
                 channel: this.notificationConfig.slack.channel,
                 text: `Notification: ${event}\n${JSON.stringify(data, null, 2)}`
             });
+        }
+    }
+
+    async registerWorker() {
+        try {
+            await this.redisClient.sadd('workers', this.workerId);
+        } catch (e) {
+            console.log(e);
+        }
+    }
+
+    async deregisterWorker() {
+        try {
+            await this.redisClient.srem('workers', this.workerId);
+        } catch (e) {
+            console.log(e);
+        }
+    }
+
+    async redistributeJobs() {
+        try {
+            const workers = await this.redisClient.smembers('workers');
+            if (workers.length === 0) {
+                return;
+            }
+
+            const jobs = await this.getCurrentQueue('myJob');
+            for (let job of jobs) {
+                const workerIndex = Math.floor(Math.random() * workers.length);
+                const workerId = workers[workerIndex];
+                await this.pushToQueue(job, 'myJob', job.identifier, Date.now(), 0, 0);
+            }
+        } catch (e) {
+            console.log(e);
         }
     }
 }

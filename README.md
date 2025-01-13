@@ -295,80 +295,75 @@ This project is licensed under the ISC License.
 - **Load balancing**: Distribute jobs evenly across available workers.
 - **Fault tolerance**: Handle worker failures gracefully by redistributing uncompleted tasks.
 
-## Developer-Focused Features
+#### Registering and Deregistering Worker Instances
 
-### API Design
+To register a worker instance, use the `registerWorker` method:
 
-- **Simple and expressive APIs**: Provide intuitive methods to enqueue, process, and monitor jobs.
-- **Middleware support**: Allow custom logic to be applied to jobs during enqueueing or execution.
-
-### Extensibility
-
-- **Custom plugins**: Enable developers to extend functionality (e.g., custom storage backends, advanced monitoring).
-- **Event hooks**: Emit events for various task lifecycle stages (e.g., onStart, onComplete, onError).
-
-### Monitoring and Debugging
-
-- **Real-time dashboards**: Visualize job queues, worker performance, and task statuses.
-- **Logging**: Provide detailed logs for debugging and analysis.
-- **Error tracking**: Record and expose detailed error information for failed tasks.
-
-## Performance-Oriented Features
-
-### Scalability
-
-- **Horizontal scaling**: Add more workers or nodes to increase throughput.
-- **Efficient data structures**: Use optimized queues or priority heaps for managing jobs.
-- **Memory management**: Avoid memory leaks and ensure efficient use of system resources.
-
-### High Throughput
-
-- **Batch processing**: Support batching tasks for efficient execution.
-- **Parallelism**: Leverage multi-threading or asynchronous operations for high performance.
-
-### Lightweight
-
-- **Low overhead**: Minimize the resource footprint to ensure the library doesn’t slow down the application.
-- **Optimized dependencies**: Use minimal and performant third-party dependencies.
-
-## Security and Reliability
-
-### Security
-
-- **Access control**: Restrict job management APIs to authorized users or systems.
-- **Input validation**: Ensure task data is validated to prevent injection or misuse.
-- **Data encryption**: Secure sensitive job data in transit and at rest.
-
-### Reliability
-
-- **Task deduplication**: Avoid processing the same task multiple times in error.
-- **Graceful shutdown**: Safely pause and complete tasks during application shutdown.
-- **State snapshots**: Provide point-in-time recovery by saving the state of queues and workers.
-
-## Integration Features
-
-### Ecosystem Compatibility
-
-- **Database support**: Integrate with popular databases (e.g., Redis, MongoDB, PostgreSQL) for job storage.
-- **Framework integrations**: Provide plugins or extensions for popular frameworks (e.g., Express, NestJS, Next.js).
-- **Language interop**: Allow non-JavaScript applications to interact with the job system via APIs or protocols (e.g., REST, gRPC).
-
-### Notification Systems
-
-- **Notify systems or developers when tasks are completed, fail, or require attention (e.g., via email, Slack, or webhooks).**
-- **Webhook and notifications**: Allow users to set config for webhook and notifications like email or Slack, and perform those notifications based on the config.
-- **Notification parameters**: Take parameters for notifications.
-
-## Load Testing
-
-A new load testing script has been added to simulate 1 million jobs with concurrent and sequential tests.
-
-### Running the Load Test
-
-To run the load test, use the following command:
-
-```bash
-npm run load-test
+```javascript
+queue.registerWorker();
 ```
 
-The load test will create and enqueue 1 million jobs, then run concurrent and sequential tests to simulate different load scenarios.
+To deregister a worker instance, use the `deregisterWorker` method:
+
+```javascript
+queue.deregisterWorker();
+```
+
+### Fault Tolerance
+
+To handle worker failures gracefully and redistribute uncompleted tasks, use the `redistributeJobs` method:
+
+```javascript
+queue.redistributeJobs();
+```
+
+### Running Multiple `pop-queue` Jobs on Different Nodes in Kubernetes
+
+To run multiple `pop-queue` jobs on different nodes in Kubernetes, follow these steps:
+
+1. Create a Kubernetes deployment for `pop-queue`:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pop-queue
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: pop-queue
+  template:
+    metadata:
+      labels:
+        app: pop-queue
+    spec:
+      containers:
+      - name: pop-queue
+        image: your-docker-image
+        env:
+        - name: DB_URL
+          value: "mongodb://yourMongoDbUrl:27017"
+        - name: REDIS_URL
+          value: "redis://yourRedisUrl:6379"
+        - name: WORKER_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: WORKER_TIMEOUT
+          value: "30000"
+```
+
+2. Apply the deployment:
+
+```bash
+kubectl apply -f pop-queue-deployment.yaml
+```
+
+3. Verify the deployment:
+
+```bash
+kubectl get deployments
+```
+
+This will allow you to run multiple `pop-queue` jobs on different nodes in Kubernetes, ensuring high availability and fault tolerance.

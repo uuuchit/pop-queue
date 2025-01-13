@@ -32,6 +32,36 @@ app.post('/api/requeue-job', async (req, res) => {
     }
 });
 
+app.post('/api/register-worker', async (req, res) => {
+    try {
+        await queue.registerWorker();
+        res.status(200).json({ message: 'Worker registered successfully' });
+    } catch (error) {
+        console.error('Error registering worker:', error);
+        res.status(500).json({ error: 'Failed to register worker' });
+    }
+});
+
+app.post('/api/deregister-worker', async (req, res) => {
+    try {
+        await queue.deregisterWorker();
+        res.status(200).json({ message: 'Worker deregistered successfully' });
+    } catch (error) {
+        console.error('Error deregistering worker:', error);
+        res.status(500).json({ error: 'Failed to deregister worker' });
+    }
+});
+
+app.post('/api/redistribute-jobs', async (req, res) => {
+    try {
+        await queue.redistributeJobs();
+        res.status(200).json({ message: 'Jobs redistributed successfully' });
+    } catch (error) {
+        console.error('Error redistributing jobs:', error);
+        res.status(500).json({ error: 'Failed to redistribute jobs' });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });
