@@ -159,6 +159,53 @@ To enable Redis clustering in your Redis deployment, follow these steps:
    redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 --cluster-replicas 1
    ```
 
+## Job Management UI
+
+A new UI has been added to manage jobs. The UI allows you to view job details and requeue jobs.
+
+### Accessing the UI
+
+To access the UI, open `pop-queue/ui/index.html` in your browser.
+
+### UI Structure
+
+The UI consists of the following components:
+
+- A container for job management tasks.
+- A button to requeue jobs.
+
+### UI Files
+
+The UI files are located in the `pop-queue/ui` directory:
+
+- `index.html`: The main HTML file for the UI.
+- `styles.css`: The CSS file for styling the UI.
+- `app.js`: The JavaScript file for handling UI interactions.
+
+## API Endpoints
+
+New API endpoints have been added to get job details and requeue jobs.
+
+### Getting Job Details
+
+To get job details, send a GET request to `/api/job-details`.
+
+Example:
+
+```bash
+curl -X GET http://localhost:3000/api/job-details
+```
+
+### Requeuing a Job
+
+To requeue a job, send a POST request to `/api/requeue-job` with the job ID in the request body.
+
+Example:
+
+```bash
+curl -X POST http://localhost:3000/api/requeue-job -H "Content-Type: application/json" -d '{"jobId": "yourJobId"}'
+```
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request on GitHub.
