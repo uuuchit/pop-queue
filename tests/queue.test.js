@@ -301,4 +301,47 @@ describe('PopQueue', () => {
         expect(redisMock.zpopmin).toHaveBeenCalledWith('pop:queue:loadTestJob', 1);
         expect(redisMock.get).toHaveBeenCalledWith('pop:queue:loadTestJob:jobIdentifier0');
     });
+
+    test('should validate job data schema', async () => {
+        const jobName = 'testJob';
+        const jobData = { data: 'testData' };
+        const schema = {
+            type: 'object',
+            properties: {
+                data: { type: 'string' }
+            },
+            required: ['data']
+        };
+
+        queue.define(jobName, jest.fn(), { schema });
+
+        await expect(queue.validateJobData(jobName, jobData)).resolves.not.toThrow();
+    });
+
+    test('should check job dependencies', async () => {
+        const jobName = 'testJob';
+        const dependentJobName = 'dependentJob';
+
+        queue.define(dependentJobName, jest.fn());
+        queue.define(jobName, jest.fn(), { dependencies: [dependentJobName] });
+
+        redisMock.zcount.mockResolvedValue(0);
+
+        await expect(queue.checkJobDependencies(jobName)).resolves.not.toThrow();
+    });
+
+    test('should get metrics', async () => {
+        const metrics = {
+            jobsProcessed: 100,
+            jobsFailed: 5,
+            jobsSucceeded: 95,
+            jobDuration: [1000, 2000, 3000]
+        };
+
+        queue.metrics = metrics;
+
+        const result = await queue.getMetrics();
+
+        expect(result).toEqual(metrics);
+    });
 });

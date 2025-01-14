@@ -204,4 +204,149 @@ describe('API Endpoints', () => {
         expect(response.body).toEqual({ message: 'Job run successfully' });
         expect(queueMock.run).toHaveBeenCalledWith(jobName, jobIdentifier, jobData);
     });
+
+    test('POST /api/rate-limit should update rate limit', async () => {
+        const rateLimit = 10;
+
+        const response = await request(app)
+            .post('/api/rate-limit')
+            .send({ rateLimit });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Rate limit updated successfully' });
+        expect(queueMock.rateLimit).toBe(rateLimit);
+    });
+
+    test('POST /api/concurrency should update concurrency', async () => {
+        const concurrency = 5;
+
+        const response = await request(app)
+            .post('/api/concurrency')
+            .send({ concurrency });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Concurrency updated successfully' });
+        expect(queueMock.maxWorkers).toBe(concurrency);
+    });
+
+    test('POST /api/retry-strategy should update retry strategy', async () => {
+        const retryStrategy = { retries: 3, backoff: { type: 'exponential', delay: 1000 } };
+
+        const response = await request(app)
+            .post('/api/retry-strategy')
+            .send({ retryStrategy });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Retry strategy updated successfully' });
+        expect(queueMock.retries).toBe(retryStrategy.retries);
+        expect(queueMock.backoff).toEqual(retryStrategy.backoff);
+    });
+
+    test('POST /api/backoff-strategy should update backoff strategy', async () => {
+        const backoffStrategy = { type: 'exponential', delay: 1000 };
+
+        const response = await request(app)
+            .post('/api/backoff-strategy')
+            .send({ backoffStrategy });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Backoff strategy updated successfully' });
+        expect(queueMock.backoff).toEqual(backoffStrategy);
+    });
+
+    test('POST /api/job-progress should update job progress', async () => {
+        const jobProgress = 50;
+
+        const response = await request(app)
+            .post('/api/job-progress')
+            .send({ jobProgress });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Job progress updated successfully' });
+        expect(queueMock.jobProgress).toBe(jobProgress);
+    });
+
+    test('POST /api/completion-callback should update completion callback', async () => {
+        const completionCallback = jest.fn();
+
+        const response = await request(app)
+            .post('/api/completion-callback')
+            .send({ completionCallback });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Completion callback updated successfully' });
+        expect(queueMock.completionCallback).toBe(completionCallback);
+    });
+
+    test('POST /api/schema-validation should update schema validation', async () => {
+        const schemaValidation = { type: 'object', properties: { data: { type: 'string' } }, required: ['data'] };
+
+        const response = await request(app)
+            .post('/api/schema-validation')
+            .send({ schemaValidation });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Schema validation updated successfully' });
+        expect(queueMock.jobSchemas['testJob']).toEqual(schemaValidation);
+    });
+
+    test('POST /api/job-dependencies should update job dependencies', async () => {
+        const jobDependencies = ['dependentJob'];
+
+        const response = await request(app)
+            .post('/api/job-dependencies')
+            .send({ jobDependencies });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Job dependencies updated successfully' });
+        expect(queueMock.jobDependencies['testJob']).toEqual(jobDependencies);
+    });
+
+    test('POST /api/flow-control should update flow control', async () => {
+        const flowControl = { type: 'sequential' };
+
+        const response = await request(app)
+            .post('/api/flow-control')
+            .send({ flowControl });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Flow control updated successfully' });
+        expect(queueMock.flowControl).toEqual(flowControl);
+    });
+
+    test('POST /api/metrics should update metrics', async () => {
+        const metrics = { jobsProcessed: 100, jobsFailed: 5, jobsSucceeded: 95, jobDuration: [1000, 2000, 3000] };
+
+        const response = await request(app)
+            .post('/api/metrics')
+            .send({ metrics });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Metrics updated successfully' });
+        expect(queueMock.metrics).toEqual(metrics);
+    });
+
+    test('POST /api/job-events should update job events', async () => {
+        const jobEvents = ['jobFinished'];
+
+        const response = await request(app)
+            .post('/api/job-events')
+            .send({ jobEvents });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Job events updated successfully' });
+        expect(queueMock.jobEvents).toEqual(jobEvents);
+    });
+
+    test('POST /api/listeners should update listeners', async () => {
+        const listeners = { jobFinished: jest.fn() };
+
+        const response = await request(app)
+            .post('/api/listeners')
+            .send({ listeners });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Listeners updated successfully' });
+        expect(queueMock.listeners).toEqual(listeners);
+    });
 });

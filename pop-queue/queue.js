@@ -9,10 +9,13 @@ const cron = require('node-cron');
 const nodemailer = require('nodemailer');
 const { WebClient } = require('@slack/web-api');
 const axios = require('axios');
+const Ajv = require('ajv');
+const EventEmitter = require('events');
 
-class PopQueue {
+class PopQueue extends EventEmitter {
 
     constructor(dbUrl, redis, dbName, cName, retries, mongoShardConfig = null, redisClusterConfig = null, workerId = null, memcachedUrl = null, postgresUrl = null) {
+        super();
         this.dbUrl = dbUrl || config.dbUrl;
         this.redis = redis || config.redisUrl;
         this.cName = cName || config.collectionName;
@@ -33,6 +36,15 @@ class PopQueue {
         this.workerTimeout = config.workerTimeout || 30000;
         this.memcachedUrl = memcachedUrl || config.memcachedUrl;
         this.postgresUrl = postgresUrl || config.postgresUrl;
+        this.ajv = new Ajv();
+        this.jobSchemas = {};
+        this.jobDependencies = {};
+        this.metrics = {
+            jobsProcessed: 0,
+            jobsFailed: 0,
+            jobsSucceeded: 0,
+            jobDuration: []
+        };
     }
 
     async define(name, fn, options = {}) {
@@ -43,6 +55,12 @@ class PopQueue {
         };
         if (options.middleware) {
             this.runners[name].middleware = options.middleware;
+        }
+        if (options.schema) {
+            this.jobSchemas[name] = options.schema;
+        }
+        if (options.dependencies) {
+            this.jobDependencies[name] = options.dependencies;
         }
     }
 
@@ -259,6 +277,9 @@ class PopQueue {
             }
             await this.redisClient.del(`pop:queue:${name}:${document.identifier}`);
             await this.notifySystems('jobFinished', document);
+            this.metrics.jobsSucceeded++;
+            this.metrics.jobDuration.push(finishTime - document.pickedAt);
+            this.emit('jobFinished', document);
         } catch (e) {
             console.log(e)
         }
@@ -294,6 +315,8 @@ class PopQueue {
                 }
                 await this.moveToDeadLetterQueue(document);
                 await this.notifySystems('jobFailed', document);
+                this.metrics.jobsFailed++;
+                this.emit('jobFailed', document);
             } else {
                 if (this.dbUrl.startsWith('postgres://')) {
                     const updateQuery = `
@@ -551,6 +574,31 @@ class PopQueue {
         } catch (e) {
             console.log(e);
         }
+    }
+
+    async validateJobData(name, data) {
+        if (this.jobSchemas[name]) {
+            const validate = this.ajv.compile(this.jobSchemas[name]);
+            const valid = validate(data);
+            if (!valid) {
+                throw new Error(`Job data validation failed: ${JSON.stringify(validate.errors)}`);
+            }
+        }
+    }
+
+    async checkJobDependencies(name) {
+        if (this.jobDependencies[name]) {
+            for (let dependency of this.jobDependencies[name]) {
+                const dependencyCount = await this.getQueueLength(dependency);
+                if (dependencyCount > 0) {
+                    throw new Error(`Job dependency not met: ${dependency}`);
+                }
+            }
+        }
+    }
+
+    async getMetrics() {
+        return this.metrics;
     }
 }
 
