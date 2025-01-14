@@ -142,6 +142,172 @@ queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
 queue.start();
 ```
 
+### Example 5: Job Rate Limiting and Concurrency Control
+
+```javascript
+const { PopQueue } = require('pop-queue');
+
+const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
+
+queue.define('myJob', async (job) => {
+  console.log('Processing job:', job);
+  return true;
+}, {
+  rateLimit: 10, // Limit to 10 jobs per second
+  concurrency: 5 // Allow up to 5 concurrent jobs
+});
+
+queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
+
+queue.start();
+```
+
+### Example 6: Job Retries and Backoff Strategies
+
+```javascript
+const { PopQueue } = require('pop-queue');
+
+const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
+
+queue.define('myJob', async (job) => {
+  console.log('Processing job:', job);
+  if (job.data === 'fail') {
+    return false;
+  }
+  return true;
+}, {
+  retries: 3, // Retry up to 3 times
+  backoff: {
+    type: 'exponential', // Use exponential backoff strategy
+    delay: 1000 // Start with a 1-second delay
+  }
+});
+
+queue.now({ data: 'fail' }, 'myJob', 'jobIdentifier', Date.now());
+
+queue.start();
+```
+
+### Example 7: Job Progress Tracking and Completion Callbacks
+
+```javascript
+const { PopQueue } = require('pop-queue');
+
+const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
+
+queue.define('myJob', async (job) => {
+  console.log('Processing job:', job);
+  job.progress = 50; // Update job progress to 50%
+  await queue.emitEvent('jobProgress', job);
+  return true;
+}, {
+  completionCallback: async (job) => {
+    console.log('Job completed:', job);
+  }
+});
+
+queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
+
+queue.start();
+```
+
+### Example 8: Job Data Schema Validation
+
+```javascript
+const { PopQueue } = require('pop-queue');
+const Ajv = require('ajv');
+
+const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
+
+const ajv = new Ajv();
+const schema = {
+  type: 'object',
+  properties: {
+    data: { type: 'string' }
+  },
+  required: ['data']
+};
+
+queue.define('myJob', async (job) => {
+  console.log('Processing job:', job);
+  return true;
+}, {
+  schema: ajv.compile(schema)
+});
+
+queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
+
+queue.start();
+```
+
+### Example 9: Job Dependencies and Flow Control
+
+```javascript
+const { PopQueue } = require('pop-queue');
+
+const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
+
+queue.define('dependentJob', async (job) => {
+  console.log('Processing dependent job:', job);
+  return true;
+});
+
+queue.define('mainJob', async (job) => {
+  console.log('Processing main job:', job);
+  return true;
+}, {
+  dependencies: ['dependentJob'] // Ensure dependentJob is completed before mainJob
+});
+
+queue.now({ data: 'dependentJobData' }, 'dependentJob', 'dependentJobIdentifier', Date.now());
+queue.now({ data: 'mainJobData' }, 'mainJob', 'mainJobIdentifier', Date.now());
+
+queue.start();
+```
+
+### Example 10: Built-in Metrics and Monitoring Tools
+
+```javascript
+const { PopQueue } = require('pop-queue');
+
+const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
+
+queue.define('myJob', async (job) => {
+  console.log('Processing job:', job);
+  return true;
+});
+
+queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
+
+queue.start();
+
+setInterval(async () => {
+  const metrics = await queue.getMetrics();
+  console.log('Queue metrics:', metrics);
+}, 10000); // Log metrics every 10 seconds
+```
+
+### Example 11: Job Events and Listeners
+
+```javascript
+const { PopQueue } = require('pop-queue');
+
+const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
+
+queue.on('jobFinished', async (job) => {
+  console.log('Job finished:', job);
+});
+
+queue.define('myJob', async (job) => {
+  console.log('Processing job:', job);
+  return true;
+});
+
+queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
+
+queue.start();
+```
+
 ## Scaling and Performance
 
 To scale the library for millions of users and sessions, consider the following:

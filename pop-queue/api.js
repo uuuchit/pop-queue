@@ -65,6 +65,71 @@ app.post('/api/redistribute-jobs', async (req, res) => {
     }
 });
 
+app.post('/api/now', async (req, res) => {
+    try {
+        const { jobData, jobName, jobIdentifier, jobScore, priority, delay } = req.body;
+        await queue.now(jobData, jobName, jobIdentifier, jobScore, priority, delay);
+        res.status(200).json({ message: 'Job enqueued successfully' });
+    } catch (error) {
+        console.error('Error enqueuing job:', error);
+        res.status(500).json({ error: 'Failed to enqueue job' });
+    }
+});
+
+app.post('/api/start-loop', async (req, res) => {
+    try {
+        await queue.startLoop();
+        res.status(200).json({ message: 'Loop started successfully' });
+    } catch (error) {
+        console.error('Error starting loop:', error);
+        res.status(500).json({ error: 'Failed to start loop' });
+    }
+});
+
+app.post('/api/fail', async (req, res) => {
+    try {
+        const { jobData, reason, force } = req.body;
+        await queue.fail(jobData, reason, force);
+        res.status(200).json({ message: 'Job failed successfully' });
+    } catch (error) {
+        console.error('Error failing job:', error);
+        res.status(500).json({ error: 'Failed to fail job' });
+    }
+});
+
+app.post('/api/emit-event', async (req, res) => {
+    try {
+        const { event, data } = req.body;
+        await queue.emitEvent(event, data);
+        res.status(200).json({ message: 'Event emitted successfully' });
+    } catch (error) {
+        console.error('Error emitting event:', error);
+        res.status(500).json({ error: 'Failed to emit event' });
+    }
+});
+
+app.post('/api/on', async (req, res) => {
+    try {
+        const { event, hook } = req.body;
+        await queue.on(event, hook);
+        res.status(200).json({ message: 'Event listener registered successfully' });
+    } catch (error) {
+        console.error('Error registering event listener:', error);
+        res.status(500).json({ error: 'Failed to register event listener' });
+    }
+});
+
+app.post('/api/run', async (req, res) => {
+    try {
+        const { jobName, jobIdentifier, jobData } = req.body;
+        await queue.run(jobName, jobIdentifier, jobData);
+        res.status(200).json({ message: 'Job run successfully' });
+    } catch (error) {
+        console.error('Error running job:', error);
+        res.status(500).json({ error: 'Failed to run job' });
+    }
+});
+
 // gRPC server setup
 const PROTO_PATH = path.resolve(__dirname, 'popqueue.proto');
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {

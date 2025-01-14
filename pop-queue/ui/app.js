@@ -1,6 +1,18 @@
 document.addEventListener('DOMContentLoaded', () => {
     fetchJobDetails();
     document.getElementById('requeue-job').addEventListener('click', requeueJob);
+    document.getElementById('rate-limit').addEventListener('change', updateRateLimit);
+    document.getElementById('concurrency').addEventListener('change', updateConcurrency);
+    document.getElementById('retry-strategy').addEventListener('change', updateRetryStrategy);
+    document.getElementById('backoff-strategy').addEventListener('change', updateBackoffStrategy);
+    document.getElementById('job-progress').addEventListener('change', updateJobProgress);
+    document.getElementById('completion-callback').addEventListener('change', updateCompletionCallback);
+    document.getElementById('schema-validation').addEventListener('change', updateSchemaValidation);
+    document.getElementById('job-dependencies').addEventListener('change', updateJobDependencies);
+    document.getElementById('flow-control').addEventListener('change', updateFlowControl);
+    document.getElementById('metrics').addEventListener('change', updateMetrics);
+    document.getElementById('job-events').addEventListener('change', updateJobEvents);
+    document.getElementById('listeners').addEventListener('change', updateListeners);
 });
 
 async function fetchJobDetails() {
@@ -46,5 +58,245 @@ async function requeueJob() {
     } catch (error) {
         console.error('Error requeuing job:', error);
         alert('An error occurred while requeuing the job.');
+    }
+}
+
+async function updateRateLimit(event) {
+    try {
+        const rateLimit = event.target.value;
+        const response = await fetch('/api/rate-limit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rateLimit })
+        });
+        if (response.ok) {
+            alert('Rate limit updated successfully');
+        } else {
+            const errorData = await response.json();
+            alert(`Failed to update rate limit: ${errorData.error}`);
+        }
+    } catch (error) {
+        console.error('Error updating rate limit:', error);
+        alert('An error occurred while updating the rate limit.');
+    }
+}
+
+async function updateConcurrency(event) {
+    try {
+        const concurrency = event.target.value;
+        const response = await fetch('/api/concurrency', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ concurrency })
+        });
+        if (response.ok) {
+            alert('Concurrency updated successfully');
+        } else {
+            const errorData = await response.json();
+            alert(`Failed to update concurrency: ${errorData.error}`);
+        }
+    } catch (error) {
+        console.error('Error updating concurrency:', error);
+        alert('An error occurred while updating the concurrency.');
+    }
+}
+
+async function updateRetryStrategy(event) {
+    try {
+        const retryStrategy = event.target.value;
+        const response = await fetch('/api/retry-strategy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ retryStrategy })
+        });
+        if (response.ok) {
+            alert('Retry strategy updated successfully');
+        } else {
+            const errorData = await response.json();
+            alert(`Failed to update retry strategy: ${errorData.error}`);
+        }
+    } catch (error) {
+        console.error('Error updating retry strategy:', error);
+        alert('An error occurred while updating the retry strategy.');
+    }
+}
+
+async function updateBackoffStrategy(event) {
+    try {
+        const backoffStrategy = event.target.value;
+        const response = await fetch('/api/backoff-strategy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ backoffStrategy })
+        });
+        if (response.ok) {
+            alert('Backoff strategy updated successfully');
+        } else {
+            const errorData = await response.json();
+            alert(`Failed to update backoff strategy: ${errorData.error}`);
+        }
+    } catch (error) {
+        console.error('Error updating backoff strategy:', error);
+        alert('An error occurred while updating the backoff strategy.');
+    }
+}
+
+async function updateJobProgress(event) {
+    try {
+        const jobProgress = event.target.value;
+        const response = await fetch('/api/job-progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobProgress })
+        });
+        if (response.ok) {
+            alert('Job progress updated successfully');
+        } else {
+            const errorData = await response.json();
+            alert(`Failed to update job progress: ${errorData.error}`);
+        }
+    } catch (error) {
+        console.error('Error updating job progress:', error);
+        alert('An error occurred while updating the job progress.');
+    }
+}
+
+async function updateCompletionCallback(event) {
+    try {
+        const completionCallback = event.target.value;
+        const response = await fetch('/api/completion-callback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ completionCallback })
+        });
+        if (response.ok) {
+            alert('Completion callback updated successfully');
+        } else {
+            const errorData = await response.json();
+            alert(`Failed to update completion callback: ${errorData.error}`);
+        }
+    } catch (error) {
+        console.error('Error updating completion callback:', error);
+        alert('An error occurred while updating the completion callback.');
+    }
+}
+
+async function updateSchemaValidation(event) {
+    try {
+        const schemaValidation = event.target.value;
+        const response = await fetch('/api/schema-validation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ schemaValidation })
+        });
+        if (response.ok) {
+            alert('Schema validation updated successfully');
+        } else {
+            const errorData = await response.json();
+            alert(`Failed to update schema validation: ${errorData.error}`);
+        }
+    } catch (error) {
+        console.error('Error updating schema validation:', error);
+        alert('An error occurred while updating the schema validation.');
+    }
+}
+
+async function updateJobDependencies(event) {
+    try {
+        const jobDependencies = event.target.value;
+        const response = await fetch('/api/job-dependencies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobDependencies })
+        });
+        if (response.ok) {
+            alert('Job dependencies updated successfully');
+        } else {
+            const errorData = await response.json();
+            alert(`Failed to update job dependencies: ${errorData.error}`);
+        }
+    } catch (error) {
+        console.error('Error updating job dependencies:', error);
+        alert('An error occurred while updating the job dependencies.');
+    }
+}
+
+async function updateFlowControl(event) {
+    try {
+        const flowControl = event.target.value;
+        const response = await fetch('/api/flow-control', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ flowControl })
+        });
+        if (response.ok) {
+            alert('Flow control updated successfully');
+        } else {
+            const errorData = await response.json();
+            alert(`Failed to update flow control: ${errorData.error}`);
+        }
+    } catch (error) {
+        console.error('Error updating flow control:', error);
+        alert('An error occurred while updating the flow control.');
+    }
+}
+
+async function updateMetrics(event) {
+    try {
+        const metrics = event.target.value;
+        const response = await fetch('/api/metrics', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ metrics })
+        });
+        if (response.ok) {
+            alert('Metrics updated successfully');
+        } else {
+            const errorData = await response.json();
+            alert(`Failed to update metrics: ${errorData.error}`);
+        }
+    } catch (error) {
+        console.error('Error updating metrics:', error);
+        alert('An error occurred while updating the metrics.');
+    }
+}
+
+async function updateJobEvents(event) {
+    try {
+        const jobEvents = event.target.value;
+        const response = await fetch('/api/job-events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobEvents })
+        });
+        if (response.ok) {
+            alert('Job events updated successfully');
+        } else {
+            const errorData = await response.json();
+            alert(`Failed to update job events: ${errorData.error}`);
+        }
+    } catch (error) {
+        console.error('Error updating job events:', error);
+        alert('An error occurred while updating the job events.');
+    }
+}
+
+async function updateListeners(event) {
+    try {
+        const listeners = event.target.value;
+        const response = await fetch('/api/listeners', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ listeners })
+        });
+        if (response.ok) {
+            alert('Listeners updated successfully');
+        } else {
+            const errorData = await response.json();
+            alert(`Failed to update listeners: ${errorData.error}`);
+        }
+    } catch (error) {
+        console.error('Error updating listeners:', error);
+        alert('An error occurred while updating the listeners.');
     }
 }
