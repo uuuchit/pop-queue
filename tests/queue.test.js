@@ -1,4 +1,4 @@
-const { PopQueue } = require('./queue');
+const { PopQueue } = require('../pop-queue/queue');
 const { MongoClient } = require('mongodb');
 const Redis = require('ioredis');
 const winston = require('winston');
