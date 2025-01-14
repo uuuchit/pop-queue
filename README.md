@@ -18,6 +18,7 @@
 15. [Core Features](#core-features)
 16. [New Features](#new-features)
 17. [Docker Instructions](#docker-instructions)
+18. [Sync Wiki to GitHub Wiki Repository](#sync-wiki-to-github-wiki-repository)
 
 ## Overview
 
@@ -109,3 +110,23 @@ For documentation on new features, including job prioritization and delayed jobs
 ## Docker Instructions
 
 For Docker instructions, including building the Docker image and running the Docker container, please visit the [Docker Instructions](https://github.com/uuuchit/pop-queue/wiki/Docker-Instructions) page in the GitHub wiki.
+
+## Sync Wiki to GitHub Wiki Repository
+
+A new GitHub Actions workflow has been added to sync the contents of the `.github/wiki` directory to the GitHub Wiki repository on push. This workflow ensures that any changes made to the wiki files in the `.github/wiki` directory are automatically reflected in the GitHub Wiki repository.
+
+### Purpose
+
+The purpose of this workflow is to automate the process of syncing the wiki files to the GitHub Wiki repository, ensuring that the documentation is always up-to-date.
+
+### How it Works
+
+The workflow triggers on push to the `.github/wiki` directory. It includes the following steps:
+1. Checkout the main repository.
+2. Clone the GitHub Wiki repository.
+3. Copy files from the `.github/wiki` directory to the wiki repository.
+4. Commit and push changes to the GitHub Wiki repository.
+
+### Instructions
+
+To trigger the workflow, simply push changes to the `.github/wiki` directory. The workflow will automatically run and sync the changes to the GitHub Wiki repository.
