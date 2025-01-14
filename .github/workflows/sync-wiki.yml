@@ -30,4 +30,4 @@ jobs:
           git config user.email "actions@github.com"
           git add .
           git commit -m "Automated Wiki Sync: $(date)"
-          git push origin main
+          git push origin master
