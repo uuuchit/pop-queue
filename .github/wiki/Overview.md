@@ -1,6 +1,6 @@
 # Overview
 
-## Purpose
+## Purpose of project
 
 The purpose of the `pop-queue` library is to provide a robust and scalable solution for managing job queues in Node.js applications. It supports multiple storage backends, including MongoDB, Redis, Memcached, and PostgreSQL, and offers features such as job prioritization, retries, backoff strategies, and concurrency control.
 
