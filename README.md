@@ -582,6 +582,165 @@ export DB_URL="mongodb://yourMongoDbUrl:27017"
 export REDIS_URL="redis://yourRedisUrl:6379"
 ```
 
+## Error Handling
+
+### Error Handling in API Endpoints
+
+To handle errors in API endpoints, use try-catch blocks and return appropriate error responses. For example:
+
+```javascript
+app.get('/api/job-details', async (req, res) => {
+    try {
+        const jobDetails = await queue.getCurrentQueue('myJob');
+        res.json(jobDetails);
+    } catch (error) {
+        console.error('Error fetching job details:', error);
+        res.status(500).json({ error: 'Failed to fetch job details' });
+    }
+});
+```
+
+### Error Handling in Queue Operations
+
+To handle errors in queue operations, use try-catch blocks and implement retry logic. For example:
+
+```javascript
+queue.define('myJob', async (job) => {
+    try {
+        console.log('Processing job:', job);
+        // Job processing logic
+        return true;
+    } catch (error) {
+        console.error('Error processing job:', error);
+        return false;
+    }
+});
+```
+
+## Deployment Instructions
+
+### Docker Deployment
+
+To deploy the application using Docker, follow these steps:
+
+1. Build the Docker image:
+
+```bash
+docker build -t pop-queue .
+```
+
+2. Run the Docker container:
+
+```bash
+docker run -p 3000:3000 -p 50051:50051 pop-queue
+```
+
+### Kubernetes Deployment
+
+To deploy the application using Kubernetes, follow these steps:
+
+1. Create a Kubernetes deployment file (`pop-queue-deployment.yaml`):
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pop-queue
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: pop-queue
+  template:
+    metadata:
+      labels:
+        app: pop-queue
+    spec:
+      containers:
+      - name: pop-queue
+        image: your-docker-image
+        env:
+        - name: DB_URL
+          value: "mongodb://yourMongoDbUrl:27017"
+        - name: REDIS_URL
+          value: "redis://yourRedisUrl:6379"
+        - name: MEMCACHED_URL
+          value: "memcached://yourMemcachedUrl:11211"
+        - name: POSTGRES_URL
+          value: "postgres://yourPostgresUrl:5432"
+        - name: WORKER_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: WORKER_TIMEOUT
+          value: "30000"
+```
+
+2. Apply the deployment:
+
+```bash
+kubectl apply -f pop-queue-deployment.yaml
+```
+
+3. Verify the deployment:
+
+```bash
+kubectl get deployments
+```
+
+### CI/CD Pipeline Setup
+
+To set up a CI/CD pipeline for the project, follow these steps:
+
+1. Create a `.github/workflows/ci-cd.yml` file for GitHub Actions:
+
+```yaml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run tests
+      run: npm test
+
+    - name: Build Docker image
+      run: docker build -t pop-queue .
+
+    - name: Push Docker image to Docker Hub
+      run: |
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+        docker tag pop-queue ${{ secrets.DOCKER_USERNAME }}/pop-queue:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/pop-queue:latest
+```
+
+2. Add the following secrets to your GitHub repository:
+
+- `DOCKER_USERNAME`: Your Docker Hub username
+- `DOCKER_PASSWORD`: Your Docker Hub password
+
+This CI/CD pipeline will run tests, build the Docker image, and push it to Docker Hub on every push to the `main` branch and on every pull request to the `main` branch.
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request on GitHub.

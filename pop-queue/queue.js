@@ -11,6 +11,7 @@ const { WebClient } = require('@slack/web-api');
 const axios = require('axios');
 const Ajv = require('ajv');
 const EventEmitter = require('events');
+const winston = require('winston');
 
 class PopQueue extends EventEmitter {
 
@@ -45,6 +46,17 @@ class PopQueue extends EventEmitter {
             jobsSucceeded: 0,
             jobDuration: []
         };
+
+        // Configure logging
+        this.logger = winston.createLogger({
+            level: 'info',
+            format: winston.format.json(),
+            transports: [
+                new winston.transports.Console(),
+                new winston.transports.File({ filename: 'error.log', level: 'error' }),
+                new winston.transports.File({ filename: 'combined.log' })
+            ]
+        });
     }
 
     async define(name, fn, options = {}) {
@@ -127,6 +139,7 @@ class PopQueue extends EventEmitter {
             }
         } catch (e) {
             console.log(e);
+            this.logger.error('Error connecting to database:', e);
         }
     }
 
@@ -148,6 +161,7 @@ class PopQueue extends EventEmitter {
             });
         } catch (e) {
             console.log(e);
+            this.logger.error('Error connecting to Redis:', e);
         }
     }
 
@@ -198,7 +212,8 @@ class PopQueue extends EventEmitter {
             }
             await this.pushToQueue(document, name, identifier, score, priority, delay);
         } catch(e) {
-            console.log(e);        
+            console.log(e);
+            this.logger.error('Error enqueuing job:', e);
         }
     }
 
@@ -211,6 +226,7 @@ class PopQueue extends EventEmitter {
             await pipeline.exec();
         } catch (e) {
             console.log(e);
+            this.logger.error('Error pushing job to queue:', e);
         }
     }
 
@@ -250,6 +266,7 @@ class PopQueue extends EventEmitter {
             return document;
         } catch(err) {
             console.log("error parsing doc from redis", err);
+            this.logger.error('Error popping job from queue:', err);
         }
     }
 
@@ -281,7 +298,8 @@ class PopQueue extends EventEmitter {
             this.metrics.jobDuration.push(finishTime - document.pickedAt);
             this.emit('jobFinished', document);
         } catch (e) {
-            console.log(e)
+            console.log(e);
+            this.logger.error('Error finishing job:', e);
         }
     }
 
@@ -371,7 +389,8 @@ class PopQueue extends EventEmitter {
                 }
             }
         } catch (e) {
-            console.log(e)
+            console.log(e);
+            this.logger.error('Error failing job:', e);
         }
     }
 
@@ -388,6 +407,7 @@ class PopQueue extends EventEmitter {
             }
         } catch (e) {
             console.log(e);
+            this.logger.error('Error moving job to dead letter queue:', e);
         }
     }
 
@@ -421,52 +441,73 @@ class PopQueue extends EventEmitter {
             }
         } catch(e) {
             console.log(e);
+            this.logger.error('Error running job:', e);
         }
     }
 
     async getQueueLength(name) {
-        return await this.redisClient.zcount(`pop:queue:${name}`, '-inf', '+inf');
+        try {
+            return await this.redisClient.zcount(`pop:queue:${name}`, '-inf', '+inf');
+        } catch (e) {
+            console.log(e);
+            this.logger.error('Error getting queue length:', e);
+        }
     }
 
     async getCurrentQueue(name) {
-        let docs =  await this.redisClient.zrange(`pop:queue:${name}`, 0 , - 1);
-        docs = docs.filter(d => d).map(d => parseDocFromRedis(d));
-        return docs
+        try {
+            let docs =  await this.redisClient.zrange(`pop:queue:${name}`, 0 , - 1);
+            docs = docs.filter(d => d).map(d => parseDocFromRedis(d));
+            return docs;
+        } catch (e) {
+            console.log(e);
+            this.logger.error('Error getting current queue:', e);
+        }
     }
 
     async getCountInLastNHours(name, n) {
-        let startTime = new Date(Date.now() - n * 60 * 60 * 1000);
-        let oId = objectId.createFromTime(startTime.getTime() / 1000);
-        let filter = {
-            _id: {
-                $gte: oId.toString(),
-            },
-            name
-        };
-        let count = await this.db.collection(this.getDbCollectionName(name)).count(filter);
-        return count;
+        try {
+            let startTime = new Date(Date.now() - n * 60 * 60 * 1000);
+            let oId = objectId.createFromTime(startTime.getTime() / 1000);
+            let filter = {
+                _id: {
+                    $gte: oId.toString(),
+                },
+                name
+            };
+            let count = await this.db.collection(this.getDbCollectionName(name)).count(filter);
+            return count;
+        } catch (e) {
+            console.log(e);
+            this.logger.error('Error getting count in last N hours:', e);
+        }
     }
 
     async getPaginatedExecutedQueue(name, { lastNDays = 1, skip, limit, sort, search, status }) {
-        let startOfNDay = new Date(Date.now() - lastNDays * 24 * 60 * 60 * 1000);
-        startOfNDay.setUTCHours(0,0,0,0);
-        let oId = objectId.createFromTime(startOfNDay.getTime() / 1000);
-        let filter = {
-            _id: {
-                $gte: oId.toString(),
-            },
-            name
-        };
+        try {
+            let startOfNDay = new Date(Date.now() - lastNDays * 24 * 60 * 60 * 1000);
+            startOfNDay.setUTCHours(0,0,0,0);
+            let oId = objectId.createFromTime(startOfNDay.getTime() / 1000);
+            let filter = {
+                _id: {
+                    $gte: oId.toString(),
+                },
+                name
+            };
 
-        if (status === "failed") {
-            filter.status = status
+            if (status === "failed") {
+                filter.status = status
+            }
+            let docs = await this.db.collection(this.getDbCollectionName(name)).find(filter)
+            .sort(sort)
+            .skip(skip)
+            .limit(parseInt(limit))
+            .toArray();
+            return docs;
+        } catch (e) {
+            console.log(e);
+            this.logger.error('Error getting paginated executed queue:', e);
         }
-        let docs = await this.db.collection(this.getDbCollectionName(name)).find(filter)
-        .sort(sort)
-        .skip(skip)
-        .limit(parseInt(limit))
-        .toArray();
-        return docs
     }
 
     async requeueJob(name, documentId) {
@@ -474,9 +515,10 @@ class PopQueue extends EventEmitter {
             let doc = await this.db.collection(this.getDbCollectionName(name)).findOne({
                 _id: documentId
             });
-            await this.fail(doc, "Unknown, manually Requeued", true)
+            await this.fail(doc, "Unknown, manually Requeued", true);
         } catch(e) {
             console.log(e);
+            this.logger.error('Error requeuing job:', e);
         }
     }
 
@@ -537,6 +579,7 @@ class PopQueue extends EventEmitter {
             await this.redisClient.sadd('workers', this.workerId);
         } catch (e) {
             console.log(e);
+            this.logger.error('Error registering worker:', e);
         }
     }
 
@@ -545,6 +588,7 @@ class PopQueue extends EventEmitter {
             await this.redisClient.srem('workers', this.workerId);
         } catch (e) {
             console.log(e);
+            this.logger.error('Error deregistering worker:', e);
         }
     }
 
@@ -554,6 +598,7 @@ class PopQueue extends EventEmitter {
                 await this.redisClient.set(`worker:${this.workerId}:heartbeat`, Date.now(), 'PX', this.workerTimeout);
             } catch (e) {
                 console.log(e);
+                this.logger.error('Error starting heartbeat:', e);
             }
         }, this.workerTimeout / 2);
     }
@@ -573,6 +618,7 @@ class PopQueue extends EventEmitter {
             }
         } catch (e) {
             console.log(e);
+            this.logger.error('Error redistributing jobs:', e);
         }
     }
 
