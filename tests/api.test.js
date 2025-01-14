@@ -5,6 +5,7 @@ const api = require('./api');
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const path = require('path');
+const winston = require('winston');
 
 jest.mock('./queue');
 
@@ -12,6 +13,7 @@ describe('API Endpoints', () => {
     let app;
     let queueMock;
     let grpcClient;
+    let logger;
 
     beforeAll(() => {
         app = express();
@@ -32,6 +34,17 @@ describe('API Endpoints', () => {
         const popqueueProto = grpc.loadPackageDefinition(packageDefinition).popqueue;
 
         grpcClient = new popqueueProto.PopQueue('localhost:50051', grpc.credentials.createInsecure());
+
+        // Configure logging
+        logger = winston.createLogger({
+            level: 'info',
+            format: winston.format.json(),
+            transports: [
+                new winston.transports.Console(),
+                new winston.transports.File({ filename: 'error.log', level: 'error' }),
+                new winston.transports.File({ filename: 'combined.log' })
+            ]
+        });
     });
 
     afterEach(() => {
@@ -348,5 +361,55 @@ describe('API Endpoints', () => {
         expect(response.status).toBe(200);
         expect(response.body).toEqual({ message: 'Listeners updated successfully' });
         expect(queueMock.listeners).toEqual(listeners);
+    });
+
+    test('GET /api/job-details should log errors', async () => {
+        const error = new Error('Failed to fetch job details');
+        queueMock.getCurrentQueue.mockRejectedValue(error);
+
+        const response = await request(app).get('/api/job-details');
+
+        expect(response.status).toBe(500);
+        expect(response.body).toEqual({ error: 'Failed to fetch job details' });
+        expect(logger.error).toHaveBeenCalledWith('Error fetching job details:', error);
+    });
+
+    test('POST /api/requeue-job should log errors', async () => {
+        const jobId = 'testJobId';
+        const error = new Error('Failed to requeue job');
+        queueMock.requeueJob.mockRejectedValue(error);
+
+        const response = await request(app)
+            .post('/api/requeue-job')
+            .send({ jobId });
+
+        expect(response.status).toBe(500);
+        expect(response.body).toEqual({ error: 'Failed to requeue job' });
+        expect(logger.error).toHaveBeenCalledWith('Error requeuing job:', error);
+    });
+
+    test('gRPC GetJobDetails should log errors', (done) => {
+        const error = new Error('Failed to fetch job details');
+        queueMock.getCurrentQueue.mockRejectedValue(error);
+
+        grpcClient.GetJobDetails({}, (err, response) => {
+            expect(err).not.toBeNull();
+            expect(err.message).toBe('Failed to fetch job details');
+            expect(logger.error).toHaveBeenCalledWith('Error fetching job details:', error);
+            done();
+        });
+    });
+
+    test('gRPC RequeueJob should log errors', (done) => {
+        const jobId = 'testJobId';
+        const error = new Error('Failed to requeue job');
+        queueMock.requeueJob.mockRejectedValue(error);
+
+        grpcClient.RequeueJob({ jobId }, (err, response) => {
+            expect(err).not.toBeNull();
+            expect(err.message).toBe('Failed to requeue job');
+            expect(logger.error).toHaveBeenCalledWith('Error requeuing job:', error);
+            done();
+        });
     });
 });

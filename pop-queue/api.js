@@ -3,20 +3,37 @@ const { PopQueue } = require('./queue');
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const path = require('path');
+const winston = require('winston');
 
 const app = express();
 const port = 3000;
 
 const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
 
+// Configure logging
+const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.json(),
+    transports: [
+        new winston.transports.Console(),
+        new winston.transports.File({ filename: 'error.log', level: 'error' }),
+        new winston.transports.File({ filename: 'combined.log' })
+    ]
+});
+
 app.use(express.json());
+
+app.use((req, res, next) => {
+    logger.info(`${req.method} ${req.url}`);
+    next();
+});
 
 app.get('/api/job-details', async (req, res) => {
     try {
         const jobDetails = await queue.getCurrentQueue('myJob');
         res.json(jobDetails);
     } catch (error) {
-        console.error('Error fetching job details:', error);
+        logger.error('Error fetching job details:', error);
         res.status(500).json({ error: 'Failed to fetch job details' });
     }
 });
@@ -30,7 +47,7 @@ app.post('/api/requeue-job', async (req, res) => {
         await queue.requeueJob('myJob', jobId);
         res.status(200).json({ message: 'Job requeued successfully' });
     } catch (error) {
-        console.error('Error requeuing job:', error);
+        logger.error('Error requeuing job:', error);
         res.status(500).json({ error: 'Failed to requeue job' });
     }
 });
@@ -40,7 +57,7 @@ app.post('/api/register-worker', async (req, res) => {
         await queue.registerWorker();
         res.status(200).json({ message: 'Worker registered successfully' });
     } catch (error) {
-        console.error('Error registering worker:', error);
+        logger.error('Error registering worker:', error);
         res.status(500).json({ error: 'Failed to register worker' });
     }
 });
@@ -50,7 +67,7 @@ app.post('/api/deregister-worker', async (req, res) => {
         await queue.deregisterWorker();
         res.status(200).json({ message: 'Worker deregistered successfully' });
     } catch (error) {
-        console.error('Error deregistering worker:', error);
+        logger.error('Error deregistering worker:', error);
         res.status(500).json({ error: 'Failed to deregister worker' });
     }
 });
@@ -60,7 +77,7 @@ app.post('/api/redistribute-jobs', async (req, res) => {
         await queue.redistributeJobs();
         res.status(200).json({ message: 'Jobs redistributed successfully' });
     } catch (error) {
-        console.error('Error redistributing jobs:', error);
+        logger.error('Error redistributing jobs:', error);
         res.status(500).json({ error: 'Failed to redistribute jobs' });
     }
 });
@@ -71,7 +88,7 @@ app.post('/api/now', async (req, res) => {
         await queue.now(jobData, jobName, jobIdentifier, jobScore, priority, delay);
         res.status(200).json({ message: 'Job enqueued successfully' });
     } catch (error) {
-        console.error('Error enqueuing job:', error);
+        logger.error('Error enqueuing job:', error);
         res.status(500).json({ error: 'Failed to enqueue job' });
     }
 });
@@ -81,7 +98,7 @@ app.post('/api/start-loop', async (req, res) => {
         await queue.startLoop();
         res.status(200).json({ message: 'Loop started successfully' });
     } catch (error) {
-        console.error('Error starting loop:', error);
+        logger.error('Error starting loop:', error);
         res.status(500).json({ error: 'Failed to start loop' });
     }
 });
@@ -92,7 +109,7 @@ app.post('/api/fail', async (req, res) => {
         await queue.fail(jobData, reason, force);
         res.status(200).json({ message: 'Job failed successfully' });
     } catch (error) {
-        console.error('Error failing job:', error);
+        logger.error('Error failing job:', error);
         res.status(500).json({ error: 'Failed to fail job' });
     }
 });
@@ -103,7 +120,7 @@ app.post('/api/emit-event', async (req, res) => {
         await queue.emitEvent(event, data);
         res.status(200).json({ message: 'Event emitted successfully' });
     } catch (error) {
-        console.error('Error emitting event:', error);
+        logger.error('Error emitting event:', error);
         res.status(500).json({ error: 'Failed to emit event' });
     }
 });
@@ -114,7 +131,7 @@ app.post('/api/on', async (req, res) => {
         await queue.on(event, hook);
         res.status(200).json({ message: 'Event listener registered successfully' });
     } catch (error) {
-        console.error('Error registering event listener:', error);
+        logger.error('Error registering event listener:', error);
         res.status(500).json({ error: 'Failed to register event listener' });
     }
 });
@@ -125,7 +142,7 @@ app.post('/api/run', async (req, res) => {
         await queue.run(jobName, jobIdentifier, jobData);
         res.status(200).json({ message: 'Job run successfully' });
     } catch (error) {
-        console.error('Error running job:', error);
+        logger.error('Error running job:', error);
         res.status(500).json({ error: 'Failed to run job' });
     }
 });
