@@ -721,3 +721,23 @@ Support for job data schema validation has been added to `pop-queue`. You can va
 ### Built-in Metrics and Monitoring Tools
 
 Built-in metrics and monitoring tools have been introduced to `pop-queue`. You can monitor the performance of your job queues and gather metrics to optimize your system.
+
+## Docker Instructions
+
+### Building the Docker Image
+
+To build the Docker image, run the following command in the root directory of the project:
+
+```bash
+docker build -t pop-queue .
+```
+
+### Running the Docker Container
+
+To run the Docker container, use the following command:
+
+```bash
+docker run -p 3000:3000 -p 50051:50051 pop-queue
+```
+
+This will start the application and expose port 3000 for the REST API and port 50051 for gRPC.
