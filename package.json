@@ -1,20 +1,32 @@
 {
   "name": "pop-queue",
   "version": "2.0.0",
-  "description": "",
+  "description": "A library for managing job queues using MongoDB, Redis, Memcached, and PostgreSQL.",
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "load-test": "node pop-queue/load-test.js"
+    "load-test": "node pop-queue/load-test.js",
+    "start": "node index.js",
+    "build": "npm run build"
   },
   "author": "Uchit Kumar",
   "license": "ISC",
   "dependencies": {
+    "@slack/web-api": "^7.8.0",
+    "ajv": "^8.17.1",
+    "axios": "^1.7.9",
+    "cron": "^3.5.0",
+    "express": "^4.21.2",
     "ioredis": "^5.3.2",
-    "mongodb": "^5.6.0"
+    "mongodb": "^5.6.0",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.16",
+    "redlock": "^5.0.0-beta.2",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
-    "jest": "^27.0.6"
+    "jest": "^27.0.6",
+    "supertest": "^7.0.0"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
