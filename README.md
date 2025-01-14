@@ -4,52 +4,26 @@
 1. [Overview](#overview)
 2. [Installation](#installation)
 3. [Usage](#usage)
-   - [Importing the Library](#importing-the-library)
-   - [Creating a Queue](#creating-a-queue)
-   - [Defining a Job](#defining-a-job)
-   - [Enqueuing a Job](#enqueuing-a-job)
-   - [Starting the Queue](#starting-the-queue)
 4. [Integration Guidelines](#integration-guidelines)
 5. [Examples](#examples)
-   - [Example 1: Basic Usage](#example-1-basic-usage)
-   - [Example 2: Handling Failures](#example-2-handling-failures)
-   - [Example 3: Using Memcached](#example-3-using-memcached)
-   - [Example 4: Using PostgreSQL](#example-4-using-postgresql)
-   - [Example 5: Job Rate Limiting and Concurrency Control](#example-5-job-rate-limiting-and-concurrency-control)
-   - [Example 6: Job Retries and Backoff Strategies](#example-6-job-retries-and-backoff-strategies)
-   - [Example 7: Job Progress Tracking and Completion Callbacks](#example-7-job-progress-tracking-and-completion-callbacks)
-   - [Example 8: Job Data Schema Validation](#example-8-job-data-schema-validation)
-   - [Example 9: Job Dependencies and Flow Control](#example-9-job-dependencies-and-flow-control)
-   - [Example 10: Built-in Metrics and Monitoring Tools](#example-10-built-in-metrics-and-monitoring-tools)
-   - [Example 11: Job Events and Listeners](#example-11-job-events-and-listeners)
-   - [Example 12: Image Resizing and Processing Job Queue](#example-12-image-resizing-and-processing-job-queue)
-   - [Example 13: Sending Bulk Emails to Users](#example-13-sending-bulk-emails-to-users)
 6. [Scaling and Performance](#scaling-and-performance)
-   - [MongoDB Sharding](#mongodb-sharding)
-   - [Redis Clustering](#redis-clustering)
 7. [Job Management UI](#job-management-ui)
 8. [API Endpoints](#api-endpoints)
 9. [gRPC Endpoints](#grpc-endpoints)
 10. [Configuration](#configuration)
 11. [Error Handling](#error-handling)
 12. [Deployment Instructions](#deployment-instructions)
-   - [Docker Deployment](#docker-deployment)
-   - [Kubernetes Deployment](#kubernetes-deployment)
-   - [CI/CD Pipeline Setup](#cicd-pipeline-setup)
 13. [Contributing](#contributing)
 14. [License](#license)
 15. [Core Features](#core-features)
-   - [Task Scheduling](#task-scheduling)
-   - [Concurrency Control](#concurrency-control)
-   - [Persistence](#persistence)
-   - [Distributed Execution](#distributed-execution)
-   - [Fault Tolerance](#fault-tolerance)
 16. [New Features](#new-features)
 17. [Docker Instructions](#docker-instructions)
 
 ## Overview
 
 `pop-queue` is a library for managing job queues using MongoDB, Redis, Memcached, and PostgreSQL. It allows you to define, enqueue, and process jobs with ease. The library is designed to handle high concurrency and large-scale systems.
+
+For detailed documentation, please visit the [GitHub wiki](https://github.com/uuuchit/pop-queue/wiki).
 
 ## Installation
 
@@ -61,49 +35,15 @@ npm install pop-queue
 
 ## Usage
 
-### Importing the Library
+To use the library, follow these steps:
 
-To use the library, import it in your project:
+1. Import the library in your project.
+2. Create a queue by instantiating the `PopQueue` class with the required parameters.
+3. Define jobs using the `define` method.
+4. Enqueue jobs using the `now` method.
+5. Start the queue using the `start` method.
 
-```javascript
-const { PopQueue } = require('pop-queue');
-```
-
-### Creating a Queue
-
-To create a queue, instantiate the `PopQueue` class with the required parameters:
-
-```javascript
-const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
-```
-
-### Defining a Job
-
-To define a job, use the `define` method:
-
-```javascript
-queue.define('myJob', async (job) => {
-  // Job processing logic
-  console.log('Processing job:', job);
-  return true; // Return true if the job is successful, false otherwise
-});
-```
-
-### Enqueuing a Job
-
-To enqueue a job, use the `now` method:
-
-```javascript
-queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
-```
-
-### Starting the Queue
-
-To start the queue, use the `start` method:
-
-```javascript
-queue.start();
-```
+For detailed usage instructions, please visit the [Usage](https://github.com/uuuchit/pop-queue/wiki/Usage) page in the GitHub wiki.
 
 ## Integration Guidelines
 
@@ -116,840 +56,56 @@ To integrate `pop-queue` into your project, follow these steps:
 5. Enqueue jobs using the `now` method.
 6. Start the queue using the `start` method.
 
+For detailed integration guidelines, please visit the [Integration Guidelines](https://github.com/uuuchit/pop-queue/wiki/Integration-Guidelines) page in the GitHub wiki.
+
 ## Examples
 
-### Example 1: Basic Usage
-
-```javascript
-const { PopQueue } = require('pop-queue');
-
-const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
-
-queue.define('myJob', async (job) => {
-  console.log('Processing job:', job);
-  return true;
-});
-
-queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
-
-queue.start();
-```
-
-### Example 2: Handling Failures
-
-```javascript
-const { PopQueue } = require('pop-queue');
-
-const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
-
-queue.define('myJob', async (job) => {
-  console.log('Processing job:', job);
-  if (job.data === 'fail') {
-    return false;
-  }
-  return true;
-});
-
-queue.now({ data: 'fail' }, 'myJob', 'jobIdentifier', Date.now());
-
-queue.start();
-```
-
-### Example 3: Using Memcached
-
-```javascript
-const { PopQueue } = require('pop-queue');
-
-const queue = new PopQueue('mongodb://localhost:27017', 'memcached://localhost:11211', 'myDatabase', 'myCollection', 3);
-
-queue.define('myJob', async (job) => {
-  console.log('Processing job:', job);
-  return true;
-});
-
-queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
-
-queue.start();
-```
-
-### Example 4: Using PostgreSQL
-
-```javascript
-const { PopQueue } = require('pop-queue');
-
-const queue = new PopQueue('postgres://localhost:5432', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
-
-queue.define('myJob', async (job) => {
-  console.log('Processing job:', job);
-  return true;
-});
-
-queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
-
-queue.start();
-```
-
-### Example 5: Job Rate Limiting and Concurrency Control
-
-```javascript
-const { PopQueue } = require('pop-queue');
-
-const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
-
-queue.define('myJob', async (job) => {
-  console.log('Processing job:', job);
-  return true;
-}, {
-  rateLimit: 10, // Limit to 10 jobs per second
-  concurrency: 5 // Allow up to 5 concurrent jobs
-});
-
-queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
-
-queue.start();
-```
-
-### Example 6: Job Retries and Backoff Strategies
-
-```javascript
-const { PopQueue } = require('pop-queue');
-
-const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
-
-queue.define('myJob', async (job) => {
-  console.log('Processing job:', job);
-  if (job.data === 'fail') {
-    return false;
-  }
-  return true;
-}, {
-  retries: 3, // Retry up to 3 times
-  backoff: {
-    type: 'exponential', // Use exponential backoff strategy
-    delay: 1000 // Start with a 1-second delay
-  }
-});
-
-queue.now({ data: 'fail' }, 'myJob', 'jobIdentifier', Date.now());
-
-queue.start();
-```
-
-### Example 7: Job Progress Tracking and Completion Callbacks
-
-```javascript
-const { PopQueue } = require('pop-queue');
-
-const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
-
-queue.define('myJob', async (job) => {
-  console.log('Processing job:', job);
-  job.progress = 50; // Update job progress to 50%
-  await queue.emitEvent('jobProgress', job);
-  return true;
-}, {
-  completionCallback: async (job) => {
-    console.log('Job completed:', job);
-  }
-});
-
-queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
-
-queue.start();
-```
-
-### Example 8: Job Data Schema Validation
-
-```javascript
-const { PopQueue } = require('pop-queue');
-const Ajv = require('ajv');
-
-const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
-
-const ajv = new Ajv();
-const schema = {
-  type: 'object',
-  properties: {
-    data: { type: 'string' }
-  },
-  required: ['data']
-};
-
-queue.define('myJob', async (job) => {
-  console.log('Processing job:', job);
-  return true;
-}, {
-  schema: ajv.compile(schema)
-});
-
-queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
-
-queue.start();
-```
-
-### Example 9: Job Dependencies and Flow Control
-
-```javascript
-const { PopQueue } = require('pop-queue');
-
-const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
-
-queue.define('dependentJob', async (job) => {
-  console.log('Processing dependent job:', job);
-  return true;
-});
-
-queue.define('mainJob', async (job) => {
-  console.log('Processing main job:', job);
-  return true;
-}, {
-  dependencies: ['dependentJob'] // Ensure dependentJob is completed before mainJob
-});
-
-queue.now({ data: 'dependentJobData' }, 'dependentJob', 'dependentJobIdentifier', Date.now());
-queue.now({ data: 'mainJobData' }, 'mainJob', 'mainJobIdentifier', Date.now());
-
-queue.start();
-```
-
-### Example 10: Built-in Metrics and Monitoring Tools
-
-```javascript
-const { PopQueue } = require('pop-queue');
-
-const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
-
-queue.define('myJob', async (job) => {
-  console.log('Processing job:', job);
-  return true;
-});
-
-queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
-
-queue.start();
-
-setInterval(async () => {
-  const metrics = await queue.getMetrics();
-  console.log('Queue metrics:', metrics);
-}, 10000); // Log metrics every 10 seconds
-```
-
-### Example 11: Job Events and Listeners
-
-```javascript
-const { PopQueue } = require('pop-queue');
-
-const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
-
-queue.on('jobFinished', async (job) => {
-  console.log('Job finished:', job);
-});
-
-queue.define('myJob', async (job) => {
-  console.log('Processing job:', job);
-  return true;
-});
-
-queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
-
-queue.start();
-```
-
-### Example 12: Image Resizing and Processing Job Queue
-
-```javascript
-const { PopQueue } = require('pop-queue');
-const sharp = require('sharp');
-
-const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
-
-queue.define('imageResizingJob', async (job) => {
-  console.log('Processing image resizing job:', job);
-  const { inputPath, outputPath, width, height } = job.data;
-  await sharp(inputPath)
-    .resize(width, height)
-    .toFile(outputPath);
-  return true;
-});
-
-queue.now({ inputPath: 'input.jpg', outputPath: 'output.jpg', width: 800, height: 600 }, 'imageResizingJob', 'imageResizingJobIdentifier', Date.now());
-
-queue.start();
-```
-
-### Example 13: Sending Bulk Emails to Users
-
-```javascript
-const { PopQueue } = require('pop-queue');
-const nodemailer = require('nodemailer');
-
-const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: 'your-email@gmail.com',
-    pass: 'your-email-password'
-  }
-});
-
-queue.define('bulkEmailJob', async (job) => {
-  console.log('Processing bulk email job:', job);
-  const { to, subject, text } = job.data;
-  await transporter.sendMail({
-    from: 'your-email@gmail.com',
-    to,
-    subject,
-    text
-  });
-  return true;
-});
-
-queue.now({ to: 'user@example.com', subject: 'Hello', text: 'This is a bulk email.' }, 'bulkEmailJob', 'bulkEmailJobIdentifier', Date.now());
-
-queue.start();
-```
+For examples of using the library, including basic usage, handling failures, using Memcached, using PostgreSQL, job rate limiting and concurrency control, job retries and backoff strategies, job progress tracking and completion callbacks, job data schema validation, job dependencies and flow control, built-in metrics and monitoring tools, job events and listeners, image resizing and processing job queue, and sending bulk emails to users, please visit the [Examples](https://github.com/uuuchit/pop-queue/wiki/Examples) page in the GitHub wiki.
 
 ## Scaling and Performance
 
-To scale the library for millions of users and sessions, consider the following:
-
-1. Use Redis locks to handle race conditions.
-2. Optimize MongoDB, Redis, Memcached, and PostgreSQL queries for better performance.
-3. Use sharding and replication for MongoDB to distribute the load.
-4. Use Redis clustering to handle large datasets and high throughput.
-5. Monitor the performance of your system and adjust the configuration as needed.
-
-## MongoDB Sharding
-
-MongoDB sharding is a method for distributing data across multiple servers. It allows you to horizontally scale your database by partitioning data into smaller, more manageable pieces called shards. Each shard is a separate database that contains a subset of the data. MongoDB automatically balances the data across shards and routes queries to the appropriate shard.
-
-To enable sharding in your MongoDB deployment, follow these steps:
-
-1. Enable sharding on your database:
-   ```javascript
-   sh.enableSharding("myDatabase")
-   ```
-
-2. Shard a collection:
-   ```javascript
-   sh.shardCollection("myDatabase.myCollection", { "shardKey": 1 })
-   ```
-
-## Redis Clustering
-
-Redis clustering is a method for partitioning data across multiple Redis nodes. It allows you to horizontally scale your Redis deployment by distributing data across multiple nodes. Redis clustering provides high availability and fault tolerance by automatically failing over to a replica node in case of a node failure.
-
-To enable Redis clustering in your Redis deployment, follow these steps:
-
-1. Create a Redis cluster configuration file:
-   ```bash
-   port 7000
-   cluster-enabled yes
-   cluster-config-file nodes.conf
-   cluster-node-timeout 5000
-   appendonly yes
-   ```
-
-2. Start Redis nodes with the cluster configuration file:
-   ```bash
-   redis-server /path/to/redis.conf
-   ```
-
-3. Create the Redis cluster:
-   ```bash
-   redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 --cluster-replicas 1
-   ```
+For scaling and performance guidelines, including MongoDB sharding and Redis clustering, please visit the [Scaling and Performance](https://github.com/uuuchit/pop-queue/wiki/Scaling-and-Performance) page in the GitHub wiki.
 
 ## Job Management UI
 
-A new UI has been added to manage jobs. The UI allows you to view job details and requeue jobs.
-
-### Accessing the UI
-
-To access the UI, open `pop-queue/ui/index.html` in your browser.
-
-### UI Structure
-
-The UI consists of the following components:
-
-- A container for job management tasks.
-- A button to requeue jobs.
-
-### UI Files
-
-The UI files are located in the `pop-queue/ui` directory:
-
-- `index.html`: The main HTML file for the UI.
-- `styles.css`: The CSS file for styling the UI.
-- `app.js`: The JavaScript file for handling UI interactions.
+For documentation on the job management UI, including accessing the UI, UI structure, and UI files, please visit the [Job Management UI](https://github.com/uuuchit/pop-queue/wiki/Job-Management-UI) page in the GitHub wiki.
 
 ## API Endpoints
 
-New API endpoints have been added to get job details and requeue jobs.
-
-### Getting Job Details
-
-To get job details, send a GET request to `/api/job-details`.
-
-Example:
-
-```bash
-curl -X GET http://localhost:3000/api/job-details
-```
-
-### Requeuing a Job
-
-To requeue a job, send a POST request to `/api/requeue-job` with the job ID in the request body.
-
-Example:
-
-```bash
-curl -X POST http://localhost:3000/api/requeue-job -H "Content-Type: application/json" -d '{"jobId": "yourJobId"}'
-```
+For documentation on API endpoints, including getting job details and requeuing a job, please visit the [API Endpoints](https://github.com/uuuchit/pop-queue/wiki/API-Endpoints) page in the GitHub wiki.
 
 ## gRPC Endpoints
 
-New gRPC endpoints have been added to allow non-JavaScript applications to interact with the job system.
-
-### Getting Job Details
-
-To get job details, use the `GetJobDetails` gRPC method.
-
-Example:
-
-```protobuf
-syntax = "proto3";
-
-package popqueue;
-
-service PopQueue {
-  rpc GetJobDetails (JobDetailsRequest) returns (JobDetailsResponse);
-}
-
-message JobDetailsRequest {}
-
-message JobDetailsResponse {
-  repeated JobDetail jobDetails = 1;
-}
-
-message JobDetail {
-  string name = 1;
-  string identifier = 2;
-  string status = 3;
-  string createdAt = 4;
-  string pickedAt = 5;
-  string finishedAt = 6;
-}
-```
-
-### Requeuing a Job
-
-To requeue a job, use the `RequeueJob` gRPC method.
-
-Example:
-
-```protobuf
-syntax = "proto3";
-
-package popqueue;
-
-service PopQueue {
-  rpc RequeueJob (RequeueJobRequest) returns (RequeueJobResponse);
-}
-
-message RequeueJobRequest {
-  string jobId = 1;
-}
-
-message RequeueJobResponse {
-  string message = 1;
-}
-```
+For documentation on gRPC endpoints, including getting job details and requeuing a job, please visit the [gRPC Endpoints](https://github.com/uuuchit/pop-queue/wiki/gRPC-Endpoints) page in the GitHub wiki.
 
 ## Configuration
 
-To use this package, you need to create a configuration file and set environment variables for sensitive data. The configuration file should be named `config.json` and placed in the root directory of your project.
-
-### Configuration File
-
-Create a `config.json` file with the following structure:
-
-```json
-{
-  "dbUrl": "mongodb://localhost:27017",
-  "redisUrl": "redis://localhost:6379",
-  "memcachedUrl": "memcached://localhost:11211",
-  "postgresUrl": "postgres://localhost:5432",
-  "dbName": "myDatabase",
-  "collectionName": "myCollection",
-  "retries": 3,
-  "rateLimit": 100,
-  "concurrency": 5,
-  "backoffStrategy": {
-    "type": "exponential",
-    "delay": 1000
-  },
-  "notificationConfig": {
-    "webhook": {
-      "url": "https://example.com/webhook"
-    },
-    "email": {
-      "smtpConfig": {
-        "host": "smtp.example.com",
-        "port": 587,
-        "secure": false,
-        "auth": {
-          "user": "user@example.com",
-          "pass": "password"
-        }
-      },
-      "from": "no-reply@example.com",
-      "to": "admin@example.com"
-    },
-    "slack": {
-      "token": "xoxb-your-slack-token",
-      "channel": "#notifications"
-    }
-  }
-}
-```
-
-### Environment Variables
-
-Set the following environment variables for sensitive data:
-
-- `DB_URL`: MongoDB or PostgreSQL connection URL (default: `mongodb://localhost:27017`)
-- `REDIS_URL`: Redis or Memcached connection URL (default: `redis://localhost:6379`)
-
-Example:
-
-```bash
-export DB_URL="mongodb://yourMongoDbUrl:27017"
-export REDIS_URL="redis://yourRedisUrl:6379"
-```
+For documentation on configuration and environment variables, please visit the [Configuration](https://github.com/uuuchit/pop-queue/wiki/Configuration) page in the GitHub wiki.
 
 ## Error Handling
 
-### Error Handling in API Endpoints
-
-To handle errors in API endpoints, use try-catch blocks and return appropriate error responses. For example:
-
-```javascript
-app.get('/api/job-details', async (req, res) => {
-    try {
-        const jobDetails = await queue.getCurrentQueue('myJob');
-        res.json(jobDetails);
-    } catch (error) {
-        console.error('Error fetching job details:', error);
-        res.status(500).json({ error: 'Failed to fetch job details' });
-    }
-});
-```
-
-### Error Handling in Queue Operations
-
-To handle errors in queue operations, use try-catch blocks and implement retry logic. For example:
-
-```javascript
-queue.define('myJob', async (job) => {
-    try {
-        console.log('Processing job:', job);
-        // Job processing logic
-        return true;
-    } catch (error) {
-        console.error('Error processing job:', error);
-        return false;
-    }
-});
-```
+For documentation on error handling in API endpoints and queue operations, please visit the [Error Handling](https://github.com/uuuchit/pop-queue/wiki/Error-Handling) page in the GitHub wiki.
 
 ## Deployment Instructions
 
-### Docker Deployment
-
-To deploy the application using Docker, follow these steps:
-
-1. Build the Docker image:
-
-```bash
-docker build -t pop-queue .
-```
-
-2. Run the Docker container:
-
-```bash
-docker run -p 3000:3000 -p 50051:50051 pop-queue
-```
-
-### Kubernetes Deployment
-
-To deploy the application using Kubernetes, follow these steps:
-
-1. Create a Kubernetes deployment file (`pop-queue-deployment.yaml`):
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: pop-queue
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: pop-queue
-  template:
-    metadata:
-      labels:
-        app: pop-queue
-    spec:
-      containers:
-      - name: pop-queue
-        image: your-docker-image
-        env:
-        - name: DB_URL
-          value: "mongodb://yourMongoDbUrl:27017"
-        - name: REDIS_URL
-          value: "redis://yourRedisUrl:6379"
-        - name: MEMCACHED_URL
-          value: "memcached://yourMemcachedUrl:11211"
-        - name: POSTGRES_URL
-          value: "postgres://yourPostgresUrl:5432"
-        - name: WORKER_ID
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        - name: WORKER_TIMEOUT
-          value: "30000"
-```
-
-2. Apply the deployment:
-
-```bash
-kubectl apply -f pop-queue-deployment.yaml
-```
-
-3. Verify the deployment:
-
-```bash
-kubectl get deployments
-```
-
-### CI/CD Pipeline Setup
-
-To set up a CI/CD pipeline for the project, follow these steps:
-
-1. Create a `.github/workflows/ci-cd.yml` file for GitHub Actions:
-
-```yaml
-name: CI/CD Pipeline
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '14'
-
-    - name: Install dependencies
-      run: npm install
-
-    - name: Run tests
-      run: npm test
-
-    - name: Build Docker image
-      run: docker build -t pop-queue .
-
-    - name: Push Docker image to Docker Hub
-      run: |
-        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-        docker tag pop-queue ${{ secrets.DOCKER_USERNAME }}/pop-queue:latest
-        docker push ${{ secrets.DOCKER_USERNAME }}/pop-queue:latest
-```
-
-2. Add the following secrets to your GitHub repository:
-
-- `DOCKER_USERNAME`: Your Docker Hub username
-- `DOCKER_PASSWORD`: Your Docker Hub password
-
-This CI/CD pipeline will run tests, build the Docker image, and push it to Docker Hub on every push to the `main` branch and on every pull request to the `main` branch.
+For deployment instructions, including Docker deployment, Kubernetes deployment, and CI/CD pipeline setup, please visit the [Deployment Instructions](https://github.com/uuuchit/pop-queue/wiki/Deployment-Instructions) page in the GitHub wiki.
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request on GitHub.
+For contributing guidelines, please visit the [Contributing](https://github.com/uuuchit/pop-queue/wiki/Contributing) page in the GitHub wiki.
 
 ## License
 
-This project is licensed under the ISC License.
+For license information, please visit the [License](https://github.com/uuuchit/pop-queue/wiki/License) page in the GitHub wiki.
 
 ## Core Features
 
-### Task Scheduling
-
-- **Priority-based execution**: Allow tasks to have different priorities and execute high-priority tasks first.
-- **Delayed jobs**: Schedule tasks to run after a specific delay.
-- **Recurring jobs**: Support cron-like recurring tasks.
-- **Immediate jobs**: Execute tasks immediately upon submission.
-
-### Concurrency Control
-
-- **Worker pools**: Limit the number of tasks being processed simultaneously.
-- **Rate limiting**: Prevent tasks from overloading the system by capping execution rates.
-- **Resource-aware execution**: Dynamically adjust concurrency based on available resources (e.g., CPU, memory).
-
-### Persistence
-
-- **Task durability**: Store tasks persistently so they survive application crashes or restarts.
-- **Retry policies**: Automatically retry failed tasks based on predefined rules.
-- **Dead letter queues**: Move repeatedly failing tasks to a separate queue for manual review.
-
-### Distributed Execution
-
-- **Cluster support**: Allow multiple instances of the application to process jobs in parallel.
-- **Load balancing**: Distribute jobs evenly across available workers.
-- **Fault tolerance**: Handle worker failures gracefully by redistributing uncompleted tasks.
-
-#### Registering and Deregistering Worker Instances
-
-To register a worker instance, use the `registerWorker` method:
-
-```javascript
-queue.registerWorker();
-```
-
-To deregister a worker instance, use the `deregisterWorker` method:
-
-```javascript
-queue.deregisterWorker();
-```
-
-### Fault Tolerance
-
-To handle worker failures gracefully and redistribute uncompleted tasks, use the `redistributeJobs` method:
-
-```javascript
-queue.redistributeJobs();
-```
-
-### Running Multiple `pop-queue` Jobs on Different Nodes in Kubernetes
-
-To run multiple `pop-queue` jobs on different nodes in Kubernetes, follow these steps:
-
-1. Create a Kubernetes deployment for `pop-queue`:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: pop-queue
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: pop-queue
-  template:
-    metadata:
-      labels:
-        app: pop-queue
-    spec:
-      containers:
-      - name: pop-queue
-        image: your-docker-image
-        env:
-        - name: DB_URL
-          value: "mongodb://yourMongoDbUrl:27017"
-        - name: REDIS_URL
-          value: "redis://yourRedisUrl:6379"
-        - name: MEMCACHED_URL
-          value: "memcached://yourMemcachedUrl:11211"
-        - name: POSTGRES_URL
-          value: "postgres://yourPostgresUrl:5432"
-        - name: WORKER_ID
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        - name: WORKER_TIMEOUT
-          value: "30000"
-```
-
-2. Apply the deployment:
-
-```bash
-kubectl apply -f pop-queue-deployment.yaml
-```
-
-3. Verify the deployment:
-
-```bash
-kubectl get deployments
-```
-
-This will allow you to run multiple `pop-queue` jobs on different nodes in Kubernetes, ensuring high availability and fault tolerance.
+For documentation on core features, including task scheduling, concurrency control, persistence, distributed execution, and fault tolerance, please visit the [Core Features](https://github.com/uuuchit/pop-queue/wiki/Core-Features) page in the GitHub wiki.
 
 ## New Features
 
-### Job Prioritization and Delayed Jobs
-
-`pop-queue` now supports job prioritization and delayed jobs. You can assign priorities to jobs and schedule them to run after a specific delay.
-
-### Rate Limiting and Concurrency Control
-
-Built-in rate limiting and concurrency control features have been added to `pop-queue`. You can limit the number of tasks being processed simultaneously and prevent tasks from overloading the system by capping execution rates.
-
-### Job Retries and Backoff Strategies
-
-`pop-queue` now supports job retries and backoff strategies. You can automatically retry failed tasks based on predefined rules and implement backoff strategies to handle repeated failures.
-
-### Job Events and Listeners
-
-Support for job events and listeners has been added to `pop-queue`. You can emit events and register listeners to handle specific events during job processing.
-
-### Job Progress Tracking and Completion Callbacks
-
-`pop-queue` now includes job progress tracking and completion callbacks. You can track the progress of jobs and execute callbacks upon job completion.
-
-### Job Data Schema Validation
-
-Support for job data schema validation has been added to `pop-queue`. You can validate job data against predefined schemas to ensure data integrity.
-
-### Job Dependencies and Flow Control
-
-`pop-queue` now supports job dependencies and flow control. You can define dependencies between jobs and control the flow of job execution based on these dependencies.
-
-### Built-in Metrics and Monitoring Tools
-
-Built-in metrics and monitoring tools have been introduced to `pop-queue`. You can monitor the performance of your job queues and gather metrics to optimize your system.
+For documentation on new features, including job prioritization and delayed jobs, rate limiting and concurrency control, job retries and backoff strategies, job events and listeners, job progress tracking and completion callbacks, job data schema validation, job dependencies and flow control, and built-in metrics and monitoring tools, please visit the [New Features](https://github.com/uuuchit/pop-queue/wiki/New-Features) page in the GitHub wiki.
 
 ## Docker Instructions
 
-### Building the Docker Image
-
-To build the Docker image, run the following command in the root directory of the project:
-
-```bash
-docker build -t pop-queue .
-```
-
-### Running the Docker Container
-
-To run the Docker container, use the following command:
-
-```bash
-docker run -p 3000:3000 -p 50051:50051 pop-queue
-```
-
-This will start the application and expose port 3000 for the REST API and port 50051 for gRPC.
+For Docker instructions, including building the Docker image and running the Docker container, please visit the [Docker Instructions](https://github.com/uuuchit/pop-queue/wiki/Docker-Instructions) page in the GitHub wiki.
