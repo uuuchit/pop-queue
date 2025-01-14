@@ -344,4 +344,148 @@ describe('PopQueue', () => {
 
         expect(result).toEqual(metrics);
     });
+
+    test('should handle edge cases for job prioritization', async () => {
+        const jobData = { data: 'priorityJob', priority: 10, delay: 0 };
+        const jobName = 'edgeCaseTestJob';
+        const jobIdentifier = `edgeCaseJobIdentifier${jobData.data}`;
+        const jobScore = Date.now();
+
+        await queue.now(jobData, jobName, jobIdentifier, jobScore, jobData.priority, jobData.delay);
+
+        expect(dbMock.collection).toHaveBeenCalledWith('testCollection');
+        expect(dbMock.findOneAndUpdate).toHaveBeenCalledWith(
+            { identifier: jobIdentifier },
+            { $set: { data: jobData, createdAt: expect.any(Date), name: jobName, identifier: jobIdentifier, priority: jobData.priority, delay: jobData.delay } },
+            { upsert: true }
+        );
+        expect(redisMock.pipeline).toHaveBeenCalled();
+        expect(redisMock.zadd).toHaveBeenCalledWith(`pop:queue:${jobName}`, expect.any(Number), jobIdentifier);
+        expect(redisMock.set).toHaveBeenCalledWith(`pop:queue:${jobName}:${jobIdentifier}`, expect.any(String));
+        expect(redisMock.exec).toHaveBeenCalled();
+    });
+
+    test('should handle edge cases for delayed jobs', async () => {
+        const jobData = { data: 'delayedJob', priority: 0, delay: 10000 };
+        const jobName = 'edgeCaseTestJob';
+        const jobIdentifier = `edgeCaseJobIdentifier${jobData.data}`;
+        const jobScore = Date.now();
+
+        await queue.now(jobData, jobName, jobIdentifier, jobScore, jobData.priority, jobData.delay);
+
+        expect(dbMock.collection).toHaveBeenCalledWith('testCollection');
+        expect(dbMock.findOneAndUpdate).toHaveBeenCalledWith(
+            { identifier: jobIdentifier },
+            { $set: { data: jobData, createdAt: expect.any(Date), name: jobName, identifier: jobIdentifier, priority: jobData.priority, delay: jobData.delay } },
+            { upsert: true }
+        );
+        expect(redisMock.pipeline).toHaveBeenCalled();
+        expect(redisMock.zadd).toHaveBeenCalledWith(`pop:queue:${jobName}`, expect.any(Number), jobIdentifier);
+        expect(redisMock.set).toHaveBeenCalledWith(`pop:queue:${jobName}:${jobIdentifier}`, expect.any(String));
+        expect(redisMock.exec).toHaveBeenCalled();
+    });
+
+    test('should handle edge cases for retries', async () => {
+        const jobData = { data: 'retryJob', priority: 0, delay: 0, retries: 3 };
+        const jobName = 'edgeCaseTestJob';
+        const jobIdentifier = `edgeCaseJobIdentifier${jobData.data}`;
+        const jobScore = Date.now();
+
+        await queue.now(jobData, jobName, jobIdentifier, jobScore, jobData.priority, jobData.delay);
+
+        expect(dbMock.collection).toHaveBeenCalledWith('testCollection');
+        expect(dbMock.findOneAndUpdate).toHaveBeenCalledWith(
+            { identifier: jobIdentifier },
+            { $set: { data: jobData, createdAt: expect.any(Date), name: jobName, identifier: jobIdentifier, priority: jobData.priority, delay: jobData.delay, retries: jobData.retries } },
+            { upsert: true }
+        );
+        expect(redisMock.pipeline).toHaveBeenCalled();
+        expect(redisMock.zadd).toHaveBeenCalledWith(`pop:queue:${jobName}`, expect.any(Number), jobIdentifier);
+        expect(redisMock.set).toHaveBeenCalledWith(`pop:queue:${jobName}:${jobIdentifier}`, expect.any(String));
+        expect(redisMock.exec).toHaveBeenCalled();
+    });
+
+    test('should handle edge cases for backoff strategies', async () => {
+        const jobData = { data: 'backoffJob', priority: 0, delay: 0, backoff: { type: 'exponential', delay: 1000 } };
+        const jobName = 'edgeCaseTestJob';
+        const jobIdentifier = `edgeCaseJobIdentifier${jobData.data}`;
+        const jobScore = Date.now();
+
+        await queue.now(jobData, jobName, jobIdentifier, jobScore, jobData.priority, jobData.delay);
+
+        expect(dbMock.collection).toHaveBeenCalledWith('testCollection');
+        expect(dbMock.findOneAndUpdate).toHaveBeenCalledWith(
+            { identifier: jobIdentifier },
+            { $set: { data: jobData, createdAt: expect.any(Date), name: jobName, identifier: jobIdentifier, priority: jobData.priority, delay: jobData.delay, backoff: jobData.backoff } },
+            { upsert: true }
+        );
+        expect(redisMock.pipeline).toHaveBeenCalled();
+        expect(redisMock.zadd).toHaveBeenCalledWith(`pop:queue:${jobName}`, expect.any(Number), jobIdentifier);
+        expect(redisMock.set).toHaveBeenCalledWith(`pop:queue:${jobName}:${jobIdentifier}`, expect.any(String));
+        expect(redisMock.exec).toHaveBeenCalled();
+    });
+
+    test('should handle rate limiting', async () => {
+        const jobData = { data: 'rateLimitedJob', priority: 0, delay: 0 };
+        const jobName = 'rateLimitedTestJob';
+        const jobIdentifier = `rateLimitedJobIdentifier${jobData.data}`;
+        const jobScore = Date.now();
+
+        queue.rateLimit = 1; // Set rate limit to 1 job per second
+
+        await queue.now(jobData, jobName, jobIdentifier, jobScore, jobData.priority, jobData.delay);
+
+        expect(dbMock.collection).toHaveBeenCalledWith('testCollection');
+        expect(dbMock.findOneAndUpdate).toHaveBeenCalledWith(
+            { identifier: jobIdentifier },
+            { $set: { data: jobData, createdAt: expect.any(Date), name: jobName, identifier: jobIdentifier, priority: jobData.priority, delay: jobData.delay } },
+            { upsert: true }
+        );
+        expect(redisMock.pipeline).toHaveBeenCalled();
+        expect(redisMock.zadd).toHaveBeenCalledWith(`pop:queue:${jobName}`, expect.any(Number), jobIdentifier);
+        expect(redisMock.set).toHaveBeenCalledWith(`pop:queue:${jobName}:${jobIdentifier}`, expect.any(String));
+        expect(redisMock.exec).toHaveBeenCalled();
+    });
+
+    test('should handle concurrency control', async () => {
+        const jobData = { data: 'concurrentJob', priority: 0, delay: 0 };
+        const jobName = 'concurrentTestJob';
+        const jobIdentifier = `concurrentJobIdentifier${jobData.data}`;
+        const jobScore = Date.now();
+
+        queue.maxWorkers = 1; // Set max workers to 1
+
+        await queue.now(jobData, jobName, jobIdentifier, jobScore, jobData.priority, jobData.delay);
+
+        expect(dbMock.collection).toHaveBeenCalledWith('testCollection');
+        expect(dbMock.findOneAndUpdate).toHaveBeenCalledWith(
+            { identifier: jobIdentifier },
+            { $set: { data: jobData, createdAt: expect.any(Date), name: jobName, identifier: jobIdentifier, priority: jobData.priority, delay: jobData.delay } },
+            { upsert: true }
+        );
+        expect(redisMock.pipeline).toHaveBeenCalled();
+        expect(redisMock.zadd).toHaveBeenCalledWith(`pop:queue:${jobName}`, expect.any(Number), jobIdentifier);
+        expect(redisMock.set).toHaveBeenCalledWith(`pop:queue:${jobName}:${jobIdentifier}`, expect.any(String));
+        expect(redisMock.exec).toHaveBeenCalled();
+    });
+
+    test('should handle backoff strategies', async () => {
+        const jobData = { data: 'backoffJob', priority: 0, delay: 0, backoff: { type: 'exponential', delay: 1000 } };
+        const jobName = 'backoffTestJob';
+        const jobIdentifier = `backoffJobIdentifier${jobData.data}`;
+        const jobScore = Date.now();
+
+        await queue.now(jobData, jobName, jobIdentifier, jobScore, jobData.priority, jobData.delay);
+
+        expect(dbMock.collection).toHaveBeenCalledWith('testCollection');
+        expect(dbMock.findOneAndUpdate).toHaveBeenCalledWith(
+            { identifier: jobIdentifier },
+            { $set: { data: jobData, createdAt: expect.any(Date), name: jobName, identifier: jobIdentifier, priority: jobData.priority, delay: jobData.delay, backoff: jobData.backoff } },
+            { upsert: true }
+        );
+        expect(redisMock.pipeline).toHaveBeenCalled();
+        expect(redisMock.zadd).toHaveBeenCalledWith(`pop:queue:${jobName}`, expect.any(Number), jobIdentifier);
+        expect(redisMock.set).toHaveBeenCalledWith(`pop:queue:${jobName}:${jobIdentifier}`, expect.any(String));
+        expect(redisMock.exec).toHaveBeenCalled();
+    });
 });
