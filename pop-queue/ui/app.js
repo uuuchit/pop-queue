@@ -27,6 +27,7 @@ function displayJobDetails(jobDetails) {
             <p>Created At: ${new Date(job.createdAt).toLocaleString()}</p>
             <p>Picked At: ${job.pickedAt ? new Date(job.pickedAt).toLocaleString() : 'N/A'}</p>
             <p>Finished At: ${job.finishedAt ? new Date(job.finishedAt).toLocaleString() : 'N/A'}</p>
+            <p>Progress: ${job.progress ? job.progress + '%' : 'N/A'}</p>
         `;
         jobDetailsContainer.appendChild(jobElement);
     });

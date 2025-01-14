@@ -30,7 +30,9 @@ describe('PopQueue', () => {
             get: jest.fn(),
             del: jest.fn(),
             zcount: jest.fn(),
-            zrange: jest.fn()
+            zrange: jest.fn(),
+            pipeline: jest.fn().mockReturnThis(),
+            exec: jest.fn()
         };
 
         MongoClient.mockImplementation(() => ({
@@ -54,22 +56,26 @@ describe('PopQueue', () => {
         expect(queue.runners['testJob'].fn).toBe(jobFn);
     });
 
-    test('should enqueue a job', async () => {
+    test('should enqueue a job with priority and delay', async () => {
         const jobData = { data: 'testData' };
         const jobName = 'testJob';
         const jobIdentifier = 'testIdentifier';
         const jobScore = Date.now();
+        const priority = 5;
+        const delay = 1000;
 
-        await queue.now(jobData, jobName, jobIdentifier, jobScore);
+        await queue.now(jobData, jobName, jobIdentifier, jobScore, priority, delay);
 
         expect(dbMock.collection).toHaveBeenCalledWith('testCollection');
         expect(dbMock.findOneAndUpdate).toHaveBeenCalledWith(
             { identifier: jobIdentifier },
-            { $set: { data: jobData, createdAt: expect.any(Date), name: jobName, identifier: jobIdentifier } },
+            { $set: { data: jobData, createdAt: expect.any(Date), name: jobName, identifier: jobIdentifier, priority, delay } },
             { upsert: true }
         );
-        expect(redisMock.zadd).toHaveBeenCalledWith(`pop:queue:${jobName}`, jobScore, jobIdentifier);
+        expect(redisMock.pipeline).toHaveBeenCalled();
+        expect(redisMock.zadd).toHaveBeenCalledWith(`pop:queue:${jobName}`, expect.any(Number), jobIdentifier);
         expect(redisMock.set).toHaveBeenCalledWith(`pop:queue:${jobName}:${jobIdentifier}`, expect.any(String));
+        expect(redisMock.exec).toHaveBeenCalled();
     });
 
     test('should pop a job', async () => {
@@ -114,7 +120,7 @@ describe('PopQueue', () => {
         expect(redisMock.del).toHaveBeenCalledWith(`pop:queue:${jobName}:${jobIdentifier}`);
     });
 
-    test('should fail a job', async () => {
+    test('should fail a job with retries and backoff', async () => {
         const jobName = 'testJob';
         const jobIdentifier = 'testIdentifier';
         const jobData = { data: 'testData', createdAt: new Date(), name: jobName, identifier: jobIdentifier, pickedAt: new Date(), attempts: 1 };
@@ -135,6 +141,44 @@ describe('PopQueue', () => {
                 $set: { requeuedAt: expect.any(Date) }
             },
             { new: true }
+        );
+    });
+
+    test('should emit and listen to job events', async () => {
+        const eventHook = jest.fn();
+        queue.on('jobFinished', eventHook);
+
+        const jobData = { data: 'testData', createdAt: new Date(), name: 'testJob', identifier: 'testIdentifier', pickedAt: new Date() };
+        await queue.emitEvent('jobFinished', jobData);
+
+        expect(eventHook).toHaveBeenCalledWith(jobData);
+    });
+
+    test('should track job progress and call completion callback', async () => {
+        const jobName = 'testJob';
+        const jobIdentifier = 'testIdentifier';
+        const jobData = { data: 'testData', createdAt: new Date(), name: jobName, identifier: jobIdentifier, pickedAt: new Date() };
+
+        const jobFn = jest.fn(async (job) => {
+            job.progress = 50;
+            await queue.emitEvent('jobProgress', job);
+            return true;
+        });
+
+        queue.define(jobName, jobFn);
+
+        redisMock.zpopmin.mockResolvedValue([jobIdentifier]);
+        redisMock.get.mockResolvedValue(JSON.stringify(jobData));
+
+        await queue.run(jobName);
+
+        expect(jobFn).toHaveBeenCalledWith(expect.objectContaining(jobData));
+        expect(redisMock.zpopmin).toHaveBeenCalledWith(`pop:queue:${jobName}`, 1);
+        expect(redisMock.get).toHaveBeenCalledWith(`pop:queue:${jobName}:${jobIdentifier}`);
+        expect(dbMock.collection).toHaveBeenCalledWith('testCollection');
+        expect(dbMock.findOneAndUpdate).toHaveBeenCalledWith(
+            { identifier: jobIdentifier },
+            { $inc: { attempts: 1 }, $set: { pickedAt: expect.any(Date) } }
         );
     });
 
