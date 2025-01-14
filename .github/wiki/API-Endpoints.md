@@ -1,4 +1,4 @@
-# API Endpoints
+# API Endpoint
 
 ## REST API Endpoints
 
