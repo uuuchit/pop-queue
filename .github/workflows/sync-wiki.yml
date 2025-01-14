@@ -29,5 +29,6 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add .
-          git commit -m "Automated Wiki Sync: $(date)"
-          git push origin master
+          git commit -m "Automated Wiki Sync: $(date)" || echo "No changes to commit"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git master
+
