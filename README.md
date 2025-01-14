@@ -466,3 +466,37 @@ kubectl get deployments
 ```
 
 This will allow you to run multiple `pop-queue` jobs on different nodes in Kubernetes, ensuring high availability and fault tolerance.
+
+## New Features
+
+### Job Prioritization and Delayed Jobs
+
+`pop-queue` now supports job prioritization and delayed jobs. You can assign priorities to jobs and schedule them to run after a specific delay.
+
+### Rate Limiting and Concurrency Control
+
+Built-in rate limiting and concurrency control features have been added to `pop-queue`. You can limit the number of tasks being processed simultaneously and prevent tasks from overloading the system by capping execution rates.
+
+### Job Retries and Backoff Strategies
+
+`pop-queue` now supports job retries and backoff strategies. You can automatically retry failed tasks based on predefined rules and implement backoff strategies to handle repeated failures.
+
+### Job Events and Listeners
+
+Support for job events and listeners has been added to `pop-queue`. You can emit events and register listeners to handle specific events during job processing.
+
+### Job Progress Tracking and Completion Callbacks
+
+`pop-queue` now includes job progress tracking and completion callbacks. You can track the progress of jobs and execute callbacks upon job completion.
+
+### Job Data Schema Validation
+
+Support for job data schema validation has been added to `pop-queue`. You can validate job data against predefined schemas to ensure data integrity.
+
+### Job Dependencies and Flow Control
+
+`pop-queue` now supports job dependencies and flow control. You can define dependencies between jobs and control the flow of job execution based on these dependencies.
+
+### Built-in Metrics and Monitoring Tools
+
+Built-in metrics and monitoring tools have been introduced to `pop-queue`. You can monitor the performance of your job queues and gather metrics to optimize your system.

@@ -124,4 +124,84 @@ describe('API Endpoints', () => {
             done();
         });
     });
+
+    test('POST /api/now should enqueue a job with priority and delay', async () => {
+        const jobData = { data: 'testData' };
+        const jobName = 'testJob';
+        const jobIdentifier = 'testIdentifier';
+        const jobScore = Date.now();
+        const priority = 5;
+        const delay = 1000;
+
+        const response = await request(app)
+            .post('/api/now')
+            .send({ jobData, jobName, jobIdentifier, jobScore, priority, delay });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Job enqueued successfully' });
+        expect(queueMock.now).toHaveBeenCalledWith(jobData, jobName, jobIdentifier, jobScore, priority, delay);
+    });
+
+    test('POST /api/start-loop should start the loop with rate limiting and concurrency control', async () => {
+        const response = await request(app)
+            .post('/api/start-loop');
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Loop started successfully' });
+        expect(queueMock.startLoop).toHaveBeenCalled();
+    });
+
+    test('POST /api/fail should fail a job with retries and backoff', async () => {
+        const jobData = { data: 'testData' };
+        const reason = 'testReason';
+        const force = false;
+
+        const response = await request(app)
+            .post('/api/fail')
+            .send({ jobData, reason, force });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Job failed successfully' });
+        expect(queueMock.fail).toHaveBeenCalledWith(jobData, reason, force);
+    });
+
+    test('POST /api/emit-event should emit a job event', async () => {
+        const event = 'jobFinished';
+        const data = { data: 'testData' };
+
+        const response = await request(app)
+            .post('/api/emit-event')
+            .send({ event, data });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Event emitted successfully' });
+        expect(queueMock.emitEvent).toHaveBeenCalledWith(event, data);
+    });
+
+    test('POST /api/on should register a job event listener', async () => {
+        const event = 'jobFinished';
+        const hook = jest.fn();
+
+        const response = await request(app)
+            .post('/api/on')
+            .send({ event, hook });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Event listener registered successfully' });
+        expect(queueMock.on).toHaveBeenCalledWith(event, hook);
+    });
+
+    test('POST /api/run should track job progress and call completion callback', async () => {
+        const jobName = 'testJob';
+        const jobIdentifier = 'testIdentifier';
+        const jobData = { data: 'testData', createdAt: new Date(), name: jobName, identifier: jobIdentifier, pickedAt: new Date() };
+
+        const response = await request(app)
+            .post('/api/run')
+            .send({ jobName, jobIdentifier, jobData });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Job run successfully' });
+        expect(queueMock.run).toHaveBeenCalledWith(jobName, jobIdentifier, jobData);
+    });
 });
