@@ -308,6 +308,61 @@ queue.now({ data: 'myJobData' }, 'myJob', 'jobIdentifier', Date.now());
 queue.start();
 ```
 
+### Example 12: Image Resizing and Processing Job Queue
+
+```javascript
+const { PopQueue } = require('pop-queue');
+const sharp = require('sharp');
+
+const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
+
+queue.define('imageResizingJob', async (job) => {
+  console.log('Processing image resizing job:', job);
+  const { inputPath, outputPath, width, height } = job.data;
+  await sharp(inputPath)
+    .resize(width, height)
+    .toFile(outputPath);
+  return true;
+});
+
+queue.now({ inputPath: 'input.jpg', outputPath: 'output.jpg', width: 800, height: 600 }, 'imageResizingJob', 'imageResizingJobIdentifier', Date.now());
+
+queue.start();
+```
+
+### Example 13: Sending Bulk Emails to Users
+
+```javascript
+const { PopQueue } = require('pop-queue');
+const nodemailer = require('nodemailer');
+
+const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'your-email@gmail.com',
+    pass: 'your-email-password'
+  }
+});
+
+queue.define('bulkEmailJob', async (job) => {
+  console.log('Processing bulk email job:', job);
+  const { to, subject, text } = job.data;
+  await transporter.sendMail({
+    from: 'your-email@gmail.com',
+    to,
+    subject,
+    text
+  });
+  return true;
+});
+
+queue.now({ to: 'user@example.com', subject: 'Hello', text: 'This is a bulk email.' }, 'bulkEmailJob', 'bulkEmailJobIdentifier', Date.now());
+
+queue.start();
+```
+
 ## Scaling and Performance
 
 To scale the library for millions of users and sessions, consider the following:
