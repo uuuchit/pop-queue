@@ -537,6 +537,12 @@ Create a `config.json` file with the following structure:
   "dbName": "myDatabase",
   "collectionName": "myCollection",
   "retries": 3,
+  "rateLimit": 100,
+  "concurrency": 5,
+  "backoffStrategy": {
+    "type": "exponential",
+    "delay": 1000
+  },
   "notificationConfig": {
     "webhook": {
       "url": "https://example.com/webhook"

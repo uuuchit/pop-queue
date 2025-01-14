@@ -9,7 +9,9 @@ async function createAndEnqueueJobs(jobCount) {
         const jobName = 'loadTestJob';
         const jobIdentifier = `jobIdentifier${i}`;
         const jobScore = Date.now() + i;
-        await queue.now(jobData, jobName, jobIdentifier, jobScore);
+        const priority = i % 10; // Assigning priority for edge case testing
+        const delay = i % 5 * 1000; // Assigning delay for edge case testing
+        await queue.now(jobData, jobName, jobIdentifier, jobScore, priority, delay);
     }
 }
 
@@ -27,6 +29,22 @@ async function runSequentialTests(sequentialJobCount) {
     }
 }
 
+async function runEdgeCaseTests() {
+    const edgeCaseJobs = [
+        { data: 'priorityJob', priority: 10, delay: 0 },
+        { data: 'delayedJob', priority: 0, delay: 10000 },
+        { data: 'retryJob', priority: 0, delay: 0, retries: 3 },
+        { data: 'backoffJob', priority: 0, delay: 0, backoff: { type: 'exponential', delay: 1000 } }
+    ];
+
+    for (const job of edgeCaseJobs) {
+        const jobName = 'edgeCaseTestJob';
+        const jobIdentifier = `edgeCaseJobIdentifier${job.data}`;
+        const jobScore = Date.now();
+        await queue.now(job, jobName, jobIdentifier, jobScore, job.priority, job.delay);
+    }
+}
+
 async function startLoadTest() {
     const totalJobs = 1000000;
     const concurrentJobs = 500000;
@@ -41,6 +59,9 @@ async function startLoadTest() {
 
         console.log('Running sequential tests...');
         await runSequentialTests(sequentialJobs);
+
+        console.log('Running edge case tests...');
+        await runEdgeCaseTests();
 
         console.log('Load test completed.');
     } catch (error) {

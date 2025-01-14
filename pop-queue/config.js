@@ -12,7 +12,10 @@ let config = {
     collectionName: 'myCollection',
     retries: 3,
     workerId: process.env.WORKER_ID || `worker-${Math.random().toString(36).substr(2, 9)}`,
-    workerTimeout: process.env.WORKER_TIMEOUT || 30000
+    workerTimeout: process.env.WORKER_TIMEOUT || 30000,
+    rateLimit: process.env.RATE_LIMIT || 100,
+    concurrency: process.env.CONCURRENCY || 5,
+    backoffStrategy: process.env.BACKOFF_STRATEGY || { type: 'exponential', delay: 1000 }
 };
 
 if (fs.existsSync(configPath)) {
@@ -21,7 +24,7 @@ if (fs.existsSync(configPath)) {
 }
 
 // Validate configuration values
-const requiredConfigKeys = ['dbUrl', 'redisUrl', 'memcachedUrl', 'postgresUrl', 'dbName', 'collectionName', 'retries', 'workerId', 'workerTimeout'];
+const requiredConfigKeys = ['dbUrl', 'redisUrl', 'memcachedUrl', 'postgresUrl', 'dbName', 'collectionName', 'retries', 'workerId', 'workerTimeout', 'rateLimit', 'concurrency', 'backoffStrategy'];
 requiredConfigKeys.forEach(key => {
     if (!config[key]) {
         throw new Error(`Missing required configuration value: ${key}`);
@@ -31,6 +34,15 @@ requiredConfigKeys.forEach(key => {
     }
     if (key === 'workerTimeout' && typeof config[key] !== 'number') {
         throw new Error(`Invalid configuration value for ${key}: must be a number`);
+    }
+    if (key === 'rateLimit' && typeof config[key] !== 'number') {
+        throw new Error(`Invalid configuration value for ${key}: must be a number`);
+    }
+    if (key === 'concurrency' && typeof config[key] !== 'number') {
+        throw new Error(`Invalid configuration value for ${key}: must be a number`);
+    }
+    if (key === 'backoffStrategy' && typeof config[key] !== 'object') {
+        throw new Error(`Invalid configuration value for ${key}: must be an object`);
     }
 });
 
