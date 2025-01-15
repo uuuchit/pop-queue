@@ -147,6 +147,104 @@ app.post('/api/run', async (req, res) => {
     }
 });
 
+app.post('/api/job-progress', async (req, res) => {
+    try {
+        const { jobId, progress } = req.body;
+        await queue.progress(jobId, progress);
+        res.status(200).json({ message: 'Job progress updated successfully' });
+    } catch (error) {
+        logger.error('Error updating job progress:', error);
+        res.status(500).json({ error: 'Failed to update job progress' });
+    }
+});
+
+app.post('/api/job-completion-callback', async (req, res) => {
+    try {
+        const { jobId, callbackUrl } = req.body;
+        await queue.completionCallback(jobId, callbackUrl);
+        res.status(200).json({ message: 'Job completion callback registered successfully' });
+    } catch (error) {
+        logger.error('Error registering job completion callback:', error);
+        res.status(500).json({ error: 'Failed to register job completion callback' });
+    }
+});
+
+app.post('/api/validate-job-data', async (req, res) => {
+    try {
+        const { jobName, jobData } = req.body;
+        await queue.validateJobData(jobName, jobData);
+        res.status(200).json({ message: 'Job data validated successfully' });
+    } catch (error) {
+        logger.error('Error validating job data:', error);
+        res.status(500).json({ error: 'Failed to validate job data' });
+    }
+});
+
+app.post('/api/check-job-dependencies', async (req, res) => {
+    try {
+        const { jobName } = req.body;
+        await queue.checkJobDependencies(jobName);
+        res.status(200).json({ message: 'Job dependencies checked successfully' });
+    } catch (error) {
+        logger.error('Error checking job dependencies:', error);
+        res.status(500).json({ error: 'Failed to check job dependencies' });
+    }
+});
+
+app.get('/api/metrics', async (req, res) => {
+    try {
+        const metrics = await queue.getMetrics();
+        res.json(metrics);
+    } catch (error) {
+        logger.error('Error fetching metrics:', error);
+        res.status(500).json({ error: 'Failed to fetch metrics' });
+    }
+});
+
+app.post('/api/schedule-recurring-job', async (req, res) => {
+    try {
+        const { jobName, cronExpression, jobData, identifier, priority } = req.body;
+        await queue.scheduleRecurringJob(jobName, cronExpression, jobData, identifier, priority);
+        res.status(200).json({ message: 'Recurring job scheduled successfully' });
+    } catch (error) {
+        logger.error('Error scheduling recurring job:', error);
+        res.status(500).json({ error: 'Failed to schedule recurring job' });
+    }
+});
+
+app.post('/api/handle-job-failure', async (req, res) => {
+    try {
+        const { jobData, reason, force } = req.body;
+        await queue.fail(jobData, reason, force);
+        res.status(200).json({ message: 'Job failure handled successfully' });
+    } catch (error) {
+        logger.error('Error handling job failure:', error);
+        res.status(500).json({ error: 'Failed to handle job failure' });
+    }
+});
+
+app.post('/api/notify-job-event', async (req, res) => {
+    try {
+        const { event, data } = req.body;
+        await queue.notifySystems(event, data);
+        res.status(200).json({ message: 'Job event notification sent successfully' });
+    } catch (error) {
+        logger.error('Error sending job event notification:', error);
+        res.status(500).json({ error: 'Failed to send job event notification' });
+    }
+});
+
+app.post('/api/add-plugin', async (req, res) => {
+    try {
+        const { plugin } = req.body;
+        await queue.addPlugin(plugin);
+        res.status(200).json({ message: 'Plugin added successfully' });
+    } catch (error) {
+        logger.error('Error adding plugin:', error);
+        res.status(500).json({ error: 'Failed to add plugin' });
+    }
+});
+
 // gRPC server setup
 const PROTO_PATH = path.resolve(__dirname, 'popqueue.proto');
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
