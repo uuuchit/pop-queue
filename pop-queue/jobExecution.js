@@ -42,7 +42,6 @@ async function pushToBatchQueue(redisClient, documents, name) {
 
 async function popBatch(redisClient, redlock, name, batchSize) {
     try {
-        // const lock = await redlock.acquire([`locks:pop:queue:${name}`], 1000);
         const pipeline = redisClient.pipeline();
         for (let i = 0; i < batchSize; i++) {
             pipeline.zpopmin(`pop:queue:${name}`, 1);
@@ -82,7 +81,6 @@ async function popBatch(redisClient, redlock, name, batchSize) {
             }
             jobs.push(document);
         }
-        // await lock.unlock();
         return jobs;
     } catch(err) {
         console.log("error parsing doc from redis", err);
@@ -92,12 +90,10 @@ async function popBatch(redisClient, redlock, name, batchSize) {
 
 async function pop(redisClient, redlock, name) {
     try {
-        // const lock = await redlock.acquire([`locks:pop:queue:${name}`], 1000);
         let stringDocument = await redisClient.zpopmin(`pop:queue:${name}`, 1);
         let valueDocument = await redisClient.get(`pop:queue:${name}:${stringDocument[0]}`);
         if (!valueDocument || stringDocument.length == 0) {
             console.log("no document in redis");
-            // await lock.unlock();
             return null;
         }
         let document = parseDocFromRedis(valueDocument);
@@ -122,7 +118,6 @@ async function pop(redisClient, redlock, name) {
                 }
             });
         }
-        // await lock.unlock();
         return document;
     } catch(err) {
         console.log("error parsing doc from redis", err);

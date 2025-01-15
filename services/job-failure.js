@@ -1,6 +1,17 @@
 const { sleep } = require('../utils/helpers');
+const winston = require('winston');
 
-async function failJob(document, reason, force, db, dbUrl, retries, redisClient, redlock, logger) {
+const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.json(),
+    transports: [
+        new winston.transports.Console(),
+        new winston.transports.File({ filename: 'error.log', level: 'error' }),
+        new winston.transports.File({ filename: 'combined.log' })
+    ]
+});
+
+async function failJob(document, reason, force, db, dbUrl, retries, redisClient, redlock) {
     try {
         if (document.attempts >= retries && !force) {
             let finishTime = new Date();
@@ -28,7 +39,7 @@ async function failJob(document, reason, force, db, dbUrl, retries, redisClient,
                     }
                 });
             }
-            await moveToDeadLetterQueue(document, db, dbUrl, logger);
+            await moveToDeadLetterQueue(document, db, dbUrl);
             await notifySystems('jobFailed', document);
             this.metrics.jobsFailed++;
             this.emit('jobFailed', document);
@@ -51,7 +62,7 @@ async function failJob(document, reason, force, db, dbUrl, retries, redisClient,
                 const newDocument = result.rows[0];
                 if (newDocument) {
                     await sleep(2000);
-                    await pushToQueue(newDocument, newDocument.name, newDocument.identifier, redisClient, redlock, logger);
+                    await pushToQueue(newDocument, newDocument.name, newDocument.identifier, redisClient, redlock);
                 }
             } else {
                 let newDocument = await db.collection(document.cName).findOneAndUpdate({
@@ -81,7 +92,7 @@ async function failJob(document, reason, force, db, dbUrl, retries, redisClient,
                 }, {new: true});
                 if(newDocument.value && newDocument.value.name) {
                     await sleep(2000);
-                    await pushToQueue(newDocument.value, newDocument.value.name, newDocument.value.identifier, redisClient, redlock, logger);
+                    await pushToQueue(newDocument.value, newDocument.value.name, newDocument.value.identifier, redisClient, redlock);
                 }
             }
         }
@@ -91,7 +102,7 @@ async function failJob(document, reason, force, db, dbUrl, retries, redisClient,
     }
 }
 
-async function moveToDeadLetterQueue(document, db, dbUrl, logger) {
+async function moveToDeadLetterQueue(document, db, dbUrl) {
     try {
         if (dbUrl.startsWith('postgres://')) {
             const insertQuery = `
@@ -108,7 +119,7 @@ async function moveToDeadLetterQueue(document, db, dbUrl, logger) {
     }
 }
 
-async function pushToQueue(document, name, identifier, redisClient, redlock, logger) {
+async function pushToQueue(document, name, identifier, redisClient, redlock) {
     try {
         const lock = await redlock.lock(`locks:pop:queue:${name}`, 1000);
         const score = new Date().getTime() + document.delay - document.priority;
