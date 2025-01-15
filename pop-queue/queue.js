@@ -302,6 +302,9 @@ class PopQueue extends EventEmitter {
             this.metrics.jobsSucceeded++;
             this.metrics.jobDuration.push(finishTime - document.pickedAt);
             this.emit('jobFinished', document);
+            if (this.runners[name] && this.runners[name].options && this.runners[name].options.completionCallback) {
+                this.runners[name].options.completionCallback(document);
+            }
         } catch (e) {
             console.log(e);
             this.logger.error('Error finishing job:', e);
@@ -431,6 +434,7 @@ class PopQueue extends EventEmitter {
                             throw new Error("Timeout");
                         }, (this.runners[name].options && this.runners[name].options.timeout) || 10 * 60 * 1000)
                         const isSuccess = await this.runners[name].fn(job);
+                        this.progress(job, 50); // Update job progress to 50%
                         if(isSuccess) {
                             await this.finish(job, name);
                         }
@@ -441,6 +445,7 @@ class PopQueue extends EventEmitter {
                     } catch(err) {
                         await this.fail(job, err.toString());
                     }
+                    this.emitEvent('jobFinished', job);
                 });
                 if (this.parallelExecution) {
                     await Promise.all(promises);
@@ -711,6 +716,10 @@ class PopQueue extends EventEmitter {
 
     async getMetrics() {
         return this.metrics;
+    }
+
+    progress(job, progress) {
+        job.progress = progress;
     }
 }
 

@@ -16,6 +16,12 @@ class EventHandling extends EventEmitter {
   offEvent(event, listener) {
     this.off(event, listener);
   }
+
+  registerEventListeners(eventListeners) {
+    for (const [event, listener] of Object.entries(eventListeners)) {
+      this.on(event, listener);
+    }
+  }
 }
 
 module.exports = EventHandling;
