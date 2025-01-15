@@ -64,6 +64,85 @@ For detailed integration guidelines, please visit the [Integration Guidelines](h
 
 For examples of using the library, including basic usage, handling failures, using Memcached, using PostgreSQL, job rate limiting and concurrency control, job retries and backoff strategies, job progress tracking and completion callbacks, job data schema validation, job dependencies and flow control, built-in metrics and monitoring tools, job events and listeners, image resizing and processing job queue, and sending bulk emails to users, please visit the [Examples](https://github.com/uuuchit/pop-queue/wiki/Examples) page in the GitHub wiki.
 
+## Video Transcoding
+
+To create a video transcoding job queue, use the `ffmpeg` library:
+
+```javascript
+const ffmpeg = require('fluent-ffmpeg');
+
+queue.define('videoTranscodingJob', async (job) => {
+  console.log('Processing video transcoding job:', job);
+  const { inputPath, outputPath, format } = job.data;
+  await new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .output(outputPath)
+      .format(format)
+      .on('end', resolve)
+      .on('error', reject)
+      .run();
+  });
+  return true;
+});
+
+queue.now({ inputPath: 'input.mp4', outputPath: 'output.mp4', format: 'mp4' }, 'videoTranscodingJob', 'videoTranscodingJobIdentifier', Date.now());
+
+queue.start();
+```
+
+## Image Processing
+
+To create an image resizing and processing job queue, use the `sharp` library:
+
+```javascript
+const sharp = require('sharp');
+
+queue.define('imageResizingJob', async (job) => {
+  console.log('Processing image resizing job:', job);
+  const { inputPath, outputPath, width, height } = job.data;
+  await sharp(inputPath)
+    .resize(width, height)
+    .toFile(outputPath);
+  return true;
+});
+
+queue.now({ inputPath: 'input.jpg', outputPath: 'output.jpg', width: 800, height: 600 }, 'imageResizingJob', 'imageResizingJobIdentifier', Date.now());
+
+queue.start();
+```
+
+## Email Sending
+
+To create a job queue for sending bulk emails to users, use the `nodemailer` library:
+
+```javascript
+const nodemailer = require('nodemailer');
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'your-email@gmail.com',
+    pass: 'your-email-password'
+  }
+});
+
+queue.define('bulkEmailJob', async (job) => {
+  console.log('Processing bulk email job:', job);
+  const { to, subject, text } = job.data;
+  await transporter.sendMail({
+    from: 'your-email@gmail.com',
+    to,
+    subject,
+    text
+  });
+  return true;
+});
+
+queue.now({ to: 'user@example.com', subject: 'Hello', text: 'This is a bulk email.' }, 'bulkEmailJob', 'bulkEmailJobIdentifier', Date.now());
+
+queue.start();
+```
+
 ## Scaling and Performance
 
 For scaling and performance guidelines, including MongoDB sharding and Redis clustering, please visit the [Scaling and Performance](https://github.com/uuuchit/pop-queue/wiki/Scaling-and-Performance) page in the GitHub wiki.

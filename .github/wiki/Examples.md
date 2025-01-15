@@ -211,3 +211,29 @@ queue.now({ to: 'user@example.com', subject: 'Hello', text: 'This is a bulk emai
 
 queue.start();
 ```
+
+## Video Transcoding
+
+To create a video transcoding job queue, use the `ffmpeg` library:
+
+```javascript
+const ffmpeg = require('fluent-ffmpeg');
+
+queue.define('videoTranscodingJob', async (job) => {
+  console.log('Processing video transcoding job:', job);
+  const { inputPath, outputPath, format } = job.data;
+  await new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .output(outputPath)
+      .format(format)
+      .on('end', resolve)
+      .on('error', reject)
+      .run();
+  });
+  return true;
+});
+
+queue.now({ inputPath: 'input.mp4', outputPath: 'output.mp4', format: 'mp4' }, 'videoTranscodingJob', 'videoTranscodingJobIdentifier', Date.now());
+
+queue.start();
+```
