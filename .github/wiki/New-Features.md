@@ -129,3 +129,25 @@ console.log('Jobs failed:', metrics.jobsFailed);
 console.log('Jobs succeeded:', metrics.jobsSucceeded);
 console.log('Job duration:', metrics.jobDuration);
 ```
+
+## Example of Delaying Jobs
+
+The `pop-queue` library allows you to delay jobs by specifying a delay in milliseconds. You can use the `now` method to enqueue a job with a delay.
+
+Example:
+
+```javascript
+const { PopQueue } = require('pop-queue');
+
+const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
+
+queue.define('delayedJob', async (job) => {
+  console.log('Processing delayed job:', job);
+  // Perform job processing logic here
+  return true;
+});
+
+queue.now({ data: 'jobData' }, 'delayedJob', 'jobIdentifier', Date.now(), 0, 5000); // Delay 5000ms
+
+queue.start();
+```
