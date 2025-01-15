@@ -15,7 +15,10 @@ let config = {
     workerTimeout: process.env.WORKER_TIMEOUT || 30000,
     rateLimit: process.env.RATE_LIMIT || 100,
     concurrency: process.env.CONCURRENCY || 5,
-    backoffStrategy: process.env.BACKOFF_STRATEGY || { type: 'exponential', delay: 1000 }
+    backoffStrategy: process.env.BACKOFF_STRATEGY || { type: 'exponential', delay: 1000 },
+    batchSize: process.env.BATCH_SIZE || 1000,
+    parallelExecution: process.env.PARALLEL_EXECUTION || true,
+    redisPipelining: process.env.REDIS_PIPELINING || true
 };
 
 if (fs.existsSync(configPath)) {
@@ -24,7 +27,7 @@ if (fs.existsSync(configPath)) {
 }
 
 // Validate configuration values
-const requiredConfigKeys = ['dbUrl', 'redisUrl', 'memcachedUrl', 'postgresUrl', 'dbName', 'collectionName', 'retries', 'workerId', 'workerTimeout', 'rateLimit', 'concurrency', 'backoffStrategy'];
+const requiredConfigKeys = ['dbUrl', 'redisUrl', 'memcachedUrl', 'postgresUrl', 'dbName', 'collectionName', 'retries', 'workerId', 'workerTimeout', 'rateLimit', 'concurrency', 'backoffStrategy', 'batchSize', 'parallelExecution', 'redisPipelining'];
 requiredConfigKeys.forEach(key => {
     if (!config[key]) {
         throw new Error(`Missing required configuration value: ${key}`);
@@ -43,6 +46,15 @@ requiredConfigKeys.forEach(key => {
     }
     if (key === 'backoffStrategy' && typeof config[key] !== 'object') {
         throw new Error(`Invalid configuration value for ${key}: must be an object`);
+    }
+    if (key === 'batchSize' && typeof config[key] !== 'number') {
+        throw new Error(`Invalid configuration value for ${key}: must be a number`);
+    }
+    if (key === 'parallelExecution' && typeof config[key] !== 'boolean') {
+        throw new Error(`Invalid configuration value for ${key}: must be a boolean`);
+    }
+    if (key === 'redisPipelining' && typeof config[key] !== 'boolean') {
+        throw new Error(`Invalid configuration value for ${key}: must be a boolean`);
     }
 });
 

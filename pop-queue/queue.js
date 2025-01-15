@@ -57,6 +57,11 @@ class PopQueue extends EventEmitter {
                 new winston.transports.File({ filename: 'combined.log' })
             ]
         });
+
+        // Configuration options for batch size, parallel execution, and Redis pipelining
+        this.batchSize = config.batchSize || 1000;
+        this.parallelExecution = config.parallelExecution || true;
+        this.redisPipelining = config.redisPipelining || true;
     }
 
     async define(name, fn, options = {}) {
@@ -412,36 +417,97 @@ class PopQueue extends EventEmitter {
     }
 
     async run(name) {
-        let job = await this.pop(name);
-        if (!job) {
+        let jobs = await this.popBatch(name, this.batchSize);
+        if (!jobs.length) {
             let error = new Error(`No job for ${name}`);
             error.code = 404;
             throw error;
         }
         try {
             if (this.runners[name] && this.runners[name].fn) {
-                try {
-                    let fnTimeout = setTimeout(() => {
-                        throw new Error("Timeout");
-                    }, (this.runners[name].options && this.runners[name].options.timeout) || 10 * 60 * 1000)
-                    const isSuccess = await this.runners[name].fn(job);
-                    if(isSuccess) {
-                        await this.finish(job, name);
+                const promises = jobs.map(async (job) => {
+                    try {
+                        let fnTimeout = setTimeout(() => {
+                            throw new Error("Timeout");
+                        }, (this.runners[name].options && this.runners[name].options.timeout) || 10 * 60 * 1000)
+                        const isSuccess = await this.runners[name].fn(job);
+                        if(isSuccess) {
+                            await this.finish(job, name);
+                        }
+                        else{
+                            await this.fail(job, "Failed");
+                        }
+                        clearTimeout(fnTimeout);
+                    } catch(err) {
+                        await this.fail(job, err.toString());
                     }
-                    else{
-                        await this.fail(job, "Failed");
+                });
+                if (this.parallelExecution) {
+                    await Promise.all(promises);
+                } else {
+                    for (const promise of promises) {
+                        await promise;
                     }
-                    clearTimeout(fnTimeout);
-                } catch(err) {
-                    await this.fail(job, err.toString());
                 }
             } else {
-                await this.fail(job, `Runner ${name} not defined`);
+                for (const job of jobs) {
+                    await this.fail(job, `Runner ${name} not defined`);
+                }
                 throw new Error('Runner not defined');
             }
         } catch(e) {
             console.log(e);
             this.logger.error('Error running job:', e);
+        }
+    }
+
+    async popBatch(name, batchSize) {
+        try {
+            const lock = await this.redlock.lock(`locks:pop:queue:${name}`, 1000);
+            const pipeline = this.redisClient.pipeline();
+            for (let i = 0; i < batchSize; i++) {
+                pipeline.zpopmin(`pop:queue:${name}`, 1);
+            }
+            const results = await pipeline.exec();
+            const jobs = [];
+            for (const result of results) {
+                const stringDocument = result[1];
+                if (stringDocument.length === 0) {
+                    continue;
+                }
+                const valueDocument = await this.redisClient.get(`pop:queue:${name}:${stringDocument[0]}`);
+                if (!valueDocument) {
+                    continue;
+                }
+                const document = parseDocFromRedis(valueDocument);
+                let pickedTime = new Date();
+                document.pickedAt = pickedTime;
+                if (this.dbUrl.startsWith('postgres://')) {
+                    const updateQuery = `
+                        UPDATE ${this.cName}
+                        SET attempts = attempts + 1, pickedAt = $1
+                        WHERE identifier = $2;
+                    `;
+                    await this.db.query(updateQuery, [pickedTime, document.identifier]);
+                } else {
+                    await this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({
+                        identifier: document.identifier
+                    }, {
+                        $inc: {
+                            attempts: 1
+                        },
+                        $set: {
+                            pickedAt: new Date(pickedTime)
+                        }
+                    });
+                }
+                jobs.push(document);
+            }
+            await lock.unlock();
+            return jobs;
+        } catch(err) {
+            console.log("error parsing doc from redis", err);
+            this.logger.error('Error popping batch from queue:', err);
         }
     }
 
