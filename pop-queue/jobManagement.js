@@ -63,10 +63,7 @@ class PopQueue extends EventEmitter {
         this.finish = finish.bind(this);
         this.fail = fail.bind(this);
         this.moveToDeadLetterQueue = moveToDeadLetterQueue.bind(this);
-        // this.getQueueLength = getQueueLength.bind(this);
-        // this.getCurrentQueue = getCurrentQueue.bind(this);
         this.pop = pop.bind(this);
-
     }
 
     async define(name, fn, options = {}) {
@@ -87,7 +84,7 @@ class PopQueue extends EventEmitter {
     }
 
     async start(runLoop) {
-        // await this.registerWorker();
+        await this.registerWorker();
         await this.startLoop();
         setInterval(async () => {
             if (!this.loopRunning) {
@@ -154,7 +151,7 @@ class PopQueue extends EventEmitter {
             } else {
                 await this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({identifier}, {$set: document}, {upsert: true});
             }
-            await pushToQueue(this.redisClient, document, name, identifier, score, priority, delay);
+            await this.pushToQueue(document, name, identifier, score, priority, delay);
         } catch(e) {
             console.log(e);
             this.logger.error('Error enqueuing job:', e);
@@ -162,7 +159,7 @@ class PopQueue extends EventEmitter {
     }
 
     async run(name) {
-        let jobs = await this.popBatch(this.redisClient, this.redlock, name, this.batchSize, this.dbUrl);
+        let jobs = await this.popBatch(name, this.batchSize);
         if (!jobs.length) {
             let error = new Error(`No job for ${name}`);
             error.code = 404;
@@ -178,14 +175,14 @@ class PopQueue extends EventEmitter {
                         const isSuccess = await this.runners[name].fn(job);
                         this.progress(job, 50); // Update job progress to 50%
                         if(isSuccess) {
-                            await this.finish(this.db, this.redisClient, job, name);
+                            await this.finish(job, name);
                         }
                         else{
-                            await this.fail(this.db, this.redisClient, job, "Failed");
+                            await this.fail(job, "Failed");
                         }
                         clearTimeout(fnTimeout);
                     } catch(err) {
-                        await this.fail(this.db, this.redisClient, job, err.toString());
+                        await this.fail(job, err.toString());
                     }
                     this.emitEvent('jobFinished', job);
                 });
@@ -198,7 +195,7 @@ class PopQueue extends EventEmitter {
                 }
             } else {
                 for (const job of jobs) {
-                    await this.fail(this.db, this.redisClient, job, `Runner ${name} not defined`);
+                    await this.fail(job, `Runner ${name} not defined`);
                 }
                 throw new Error('Runner not defined');
             }
@@ -213,7 +210,7 @@ class PopQueue extends EventEmitter {
             let doc = await this.db.collection(this.getDbCollectionName(name)).findOne({
                 _id: documentId
             });
-            await fail(this.db, this.redisClient, doc, "Unknown, manually Requeued", true);
+            await this.fail(doc, "Unknown, manually Requeued", true);
         } catch(e) {
             console.log(e);
             this.logger.error('Error requeuing job:', e);
@@ -285,11 +282,11 @@ class PopQueue extends EventEmitter {
                 return;
             }
 
-            const jobs = await getCurrentQueue(this.redisClient, 'myJob');
+            const jobs = await this.getCurrentQueue('myJob');
             for (let job of jobs) {
                 const workerIndex = Math.floor(Math.random() * workers.length);
                 const workerId = workers[workerIndex];
-                await pushToQueue(this.redisClient, job, 'myJob', job.identifier, Date.now(), 0, 0);
+                await this.pushToQueue(job, 'myJob', job.identifier, Date.now(), 0, 0);
             }
         } catch (e) {
             console.log(e);
@@ -331,34 +328,6 @@ class PopQueue extends EventEmitter {
             await jobFunction();
         });
     }
-    async pop (name) {
-        return await this.pop(this.redisClient, name);
-    }
-    async finish (job, name) {
-        return await this.finish(this.db, this.redisClient, job, name);
-    }
-    async fail (job, name) {
-        return await this.fail(this.db, this.redisClient, job, name);
-    }
-    async moveToDeadLetterQueue (job, name) {
-        return await this.moveToDeadLetterQueue(this.db, this.redisClient, job, name);
-    }
-    async getQueueLength(name) {
-        return await this.getQueueLength(this.redisClient, name);
-    }
-    async getCurrentQueue(name) {
-        return await this.getCurrentQueue(this.redisClient, name);
-    }
-    async popBatch(name, batchSize) {
-        return await this.popBatch(this.redisClient, name, batchSize, this.dbUrl);
-    }
-    async pushToBatchQueue(job, name, identifier, score, priority = 0, delay = 0) {
-        return await this.pushToBatchQueue(this.redisClient, job, name, identifier, score, priority, delay);
-    }
-    async pushToQueue(job, name, identifier, score, priority = 0, delay = 0) {
-        return await this.pushToQueue(this.redisClient, job, name, identifier, score, priority, delay);
-    }
-
 }
 
 module.exports = {
