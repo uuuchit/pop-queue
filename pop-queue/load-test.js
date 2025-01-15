@@ -69,4 +69,52 @@ async function startLoadTest() {
     }
 }
 
+async function runBatchProcessingTest(batchSize) {
+    const jobName = 'batchProcessingTestJob';
+    const jobCount = 100000;
+
+    console.log(`Creating and enqueuing ${jobCount} jobs for batch processing test...`);
+    await createAndEnqueueJobs(jobCount);
+
+    console.log(`Running batch processing test with batch size ${batchSize}...`);
+    const startTime = Date.now();
+    await queue.popBatch(jobName, batchSize);
+    const endTime = Date.now();
+
+    console.log(`Batch processing test completed in ${endTime - startTime} ms.`);
+}
+
+async function runParallelExecutionTest(parallelJobCount) {
+    const jobName = 'parallelExecutionTestJob';
+    const jobCount = 100000;
+
+    console.log(`Creating and enqueuing ${jobCount} jobs for parallel execution test...`);
+    await createAndEnqueueJobs(jobCount);
+
+    console.log(`Running parallel execution test with ${parallelJobCount} parallel jobs...`);
+    const startTime = Date.now();
+    await runConcurrentTests(parallelJobCount);
+    const endTime = Date.now();
+
+    console.log(`Parallel execution test completed in ${endTime - startTime} ms.`);
+}
+
+async function runRedisPipeliningTest(pipeliningJobCount) {
+    const jobName = 'redisPipeliningTestJob';
+    const jobCount = 100000;
+
+    console.log(`Creating and enqueuing ${jobCount} jobs for Redis pipelining test...`);
+    await createAndEnqueueJobs(jobCount);
+
+    console.log(`Running Redis pipelining test with ${pipeliningJobCount} jobs...`);
+    const startTime = Date.now();
+    await queue.pushToQueueBatch(jobName, pipeliningJobCount);
+    const endTime = Date.now();
+
+    console.log(`Redis pipelining test completed in ${endTime - startTime} ms.`);
+}
+
 startLoadTest();
+runBatchProcessingTest(1000);
+runParallelExecutionTest(1000);
+runRedisPipeliningTest(1000);

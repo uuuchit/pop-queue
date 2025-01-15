@@ -77,4 +77,31 @@ To scale your Redis instance, you can enable clustering. Redis clustering allows
 
 10. **Concurrency Control**: Limit the number of concurrent jobs being processed to avoid resource contention. Adjust the concurrency settings based on the available resources and the nature of the jobs.
 
+11. **Batch Size Configuration**: Configure the batch size for job processing to optimize performance. A larger batch size can reduce the number of database operations and improve throughput.
+
+12. **Parallel Execution**: Enable parallel execution of jobs to take advantage of multi-core processors and improve performance. Ensure that your job processing logic is thread-safe.
+
+13. **Redis Pipelining**: Use Redis pipelining to group multiple commands into a single request, reducing latency and improving throughput. This is especially useful for high-volume job processing.
+
+14. **Lua Scripts for Atomic Operations**: Use Lua scripts in Redis to perform atomic operations, ensuring data consistency and reducing the number of round trips to the Redis server.
+
+## Configuration Options for Performance Optimization
+
+To achieve optimal performance and handle more than 100k jobs/sec, you can configure the following options in the `pop-queue/config.js` file:
+
+1. **Batch Size**: Configure the batch size for job processing.
+    ```javascript
+    batchSize: process.env.BATCH_SIZE || 1000
+    ```
+
+2. **Parallel Execution**: Enable or disable parallel execution of jobs.
+    ```javascript
+    parallelExecution: process.env.PARALLEL_EXECUTION || true
+    ```
+
+3. **Redis Pipelining**: Enable or disable Redis pipelining.
+    ```javascript
+    redisPipelining: process.env.REDIS_PIPELINING || true
+    ```
+
 By following these scaling and performance guidelines, you can ensure that your job queue system is robust, scalable, and performs optimally under various load conditions.
