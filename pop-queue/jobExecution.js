@@ -1,5 +1,6 @@
 const { sleep, parseDocFromRedis } = require('../utils/helpers.js');
 const winston = require('winston');
+const { pushToQueue, pushToBatchQueue, popBatch, pop, finish, fail, moveToDeadLetterQueue } = require('./jobManagement');
 
 const logger = winston.createLogger({
     level: 'info',
