@@ -721,6 +721,12 @@ class PopQueue extends EventEmitter {
     progress(job, progress) {
         job.progress = progress;
     }
+
+    async schedule(name, cronExpression, jobFunction) {
+        cron.schedule(cronExpression, async () => {
+            await jobFunction();
+        });
+    }
 }
 
 module.exports = {
