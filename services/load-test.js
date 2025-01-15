@@ -2,6 +2,7 @@ const { PopQueue } = require('../pop-queue/jobManagement');
 const config = require('../config/config');
 
 const queue = new PopQueue(config.dbUrl, config.redisUrl, config.dbName, config.collectionName, config.retries);
+
 // Define a job to show processing in console
 queue.define('loadTestJob', async (job) => {
     console.log(`Processing job: ${job.identifier}`);
@@ -10,6 +11,31 @@ queue.define('loadTestJob', async (job) => {
     console.log(`Job processed: ${job.identifier}`);
     return true;
 });
+
+queue.define('batchProcessingTestJob', async (job) => {
+    console.log(`Processing batch job: ${job.identifier}`);
+    // Simulate job processing time
+    await new Promise(resolve => setTimeout(resolve, 100));
+    console.log(`Batch job processed: ${job.identifier}`);
+    return true;
+});
+
+queue.define('parallelExecutionTestJob', async (job) => {
+    console.log(`Processing parallel job: ${job.identifier}`);
+    // Simulate job processing time
+    await new Promise(resolve => setTimeout(resolve, 100));
+    console.log(`Parallel job processed: ${job.identifier}`);
+    return true;
+});
+
+queue.define('redisPipeliningTestJob', async (job) => {
+    console.log(`Processing pipelining job: ${job.identifier}`);
+    // Simulate job processing time
+    await new Promise(resolve => setTimeout(resolve, 100));
+    console.log(`Pipelining job processed: ${job.identifier}`);
+    return true;
+});
+
 async function createAndEnqueueJobs(jobCount, jobName) {
     for (let i = 0; i < jobCount; i++) {
         const jobData = { data: `jobData${i}` };
@@ -48,7 +74,7 @@ async function startLoadTest() {
         await queue.start();
 
         console.log('Running edge case tests...');
-        // await runEdgeCaseTests();
+        await runEdgeCaseTests();
 
         console.log('Load test completed.');
     } catch (error) {
@@ -60,50 +86,69 @@ async function runBatchProcessingTest(batchSize) {
     const jobName = 'batchProcessingTestJob';
     const jobCount = 100000;
 
-    console.log(`Creating and enqueuing ${jobCount} jobs for batch processing test...`);
-    await createAndEnqueueJobs(jobCount, jobName);
+    try {
+        console.log(`Creating and enqueuing ${jobCount} jobs for batch processing test...`);
+        await createAndEnqueueJobs(jobCount, jobName);
 
-    console.log(`Running batch processing test with batch size ${batchSize}...`);
-    const startTime = Date.now();
-    await queue.popBatch(jobName, batchSize);
-    const endTime = Date.now();
+        console.log('Starting the queue...');
+        await queue.start();
 
-    console.log(`Batch processing test completed in ${endTime - startTime} ms.`);
+        console.log(`Running batch processing test with batch size ${batchSize}...`);
+        const startTime = Date.now();
+        await queue.popBatch(jobName, batchSize);
+        const endTime = Date.now();
+
+        console.log(`Batch processing test completed in ${endTime - startTime} ms.`);
+    } catch (error) {
+        console.error('Error during batch processing test execution:', error);
+    }
 }
 
 async function runParallelExecutionTest(parallelJobCount) {
     const jobName = 'parallelExecutionTestJob';
     const jobCount = 100000;
 
-    console.log(`Creating and enqueuing ${jobCount} jobs for parallel execution test...`);
-    await createAndEnqueueJobs(jobCount, jobName);
+    try {
+        console.log(`Creating and enqueuing ${jobCount} jobs for parallel execution test...`);
+        await createAndEnqueueJobs(jobCount, jobName);
 
-    console.log(`Running parallel execution test with ${parallelJobCount} parallel jobs...`);
-    const startTime = Date.now();
-    await queue.popBatch(jobName, parallelJobCount);
-    const endTime = Date.now();
+        console.log('Starting the queue...');
+        await queue.start();
 
-    console.log(`Parallel execution test completed in ${endTime - startTime} ms.`);
+        console.log(`Running parallel execution test with ${parallelJobCount} parallel jobs...`);
+        const startTime = Date.now();
+        await queue.popBatch(jobName, parallelJobCount);
+        const endTime = Date.now();
+
+        console.log(`Parallel execution test completed in ${endTime - startTime} ms.`);
+    } catch (error) {
+        console.error('Error during parallel execution test execution:', error);
+    }
 }
 
 async function runRedisPipeliningTest(pipeliningJobCount) {
     const jobName = 'redisPipeliningTestJob';
     const jobCount = 100000;
 
-    console.log(`Creating and enqueuing ${jobCount} jobs for Redis pipelining test...`);
-    await createAndEnqueueJobs(jobCount, jobName);
+    try {
+        console.log(`Creating and enqueuing ${jobCount} jobs for Redis pipelining test...`);
+        await createAndEnqueueJobs(jobCount, jobName);
 
-    console.log(`Running Redis pipelining test with ${pipeliningJobCount} jobs...`);
-    const startTime = Date.now();
-    await queue.pushToBatchQueue(jobName, pipeliningJobCount);
-    const endTime = Date.now();
+        console.log('Starting the queue...');
+        await queue.start();
 
-    console.log(`Redis pipelining test completed in ${endTime - startTime} ms.`);
+        console.log(`Running Redis pipelining test with ${pipeliningJobCount} jobs...`);
+        const startTime = Date.now();
+        await queue.pushToBatchQueue(jobName, pipeliningJobCount);
+        const endTime = Date.now();
+
+        console.log(`Redis pipelining test completed in ${endTime - startTime} ms.`);
+    } catch (error) {
+        console.error('Error during Redis pipelining test execution:', error);
+    }
 }
 
-
-
 startLoadTest();
-// runBatchProcessingTest(1000);
-// runParallelExecutionTest(1000);
-// runRedisPipeliningTest(1000);
+runBatchProcessingTest(1000);
+runParallelExecutionTest(1000);
+runRedisPipeliningTest(1000);
