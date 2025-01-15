@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "load-test": "node pop-queue/load-test.js",
+    "load-test": "node services/load-test.js",
     "start": "node index.js",
     "build": "npm run build"
   },
