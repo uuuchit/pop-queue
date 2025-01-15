@@ -16,6 +16,10 @@ The following environment variables can be set to configure the `pop-queue` libr
 - `RATE_LIMIT`: The rate limit for job processing.
 - `CONCURRENCY`: The maximum number of concurrent jobs being processed.
 - `BACKOFF_STRATEGY`: The backoff strategy for job retries (e.g., `{"type":"exponential","delay":1000}`).
+- `BATCH_SIZE`: The batch size for job processing.
+- `PARALLEL_EXECUTION`: Whether to enable parallel execution of jobs.
+- `REDIS_PIPELINING`: Whether to enable Redis pipelining.
+- `NOTIFICATION_CONFIG`: The configuration for notifications.
 
 ## Configuration File
 
@@ -39,7 +43,11 @@ Here is an example `config.json` file:
   "backoffStrategy": {
     "type": "exponential",
     "delay": 1000
-  }
+  },
+  "batchSize": 1000,
+  "parallelExecution": true,
+  "redisPipelining": true,
+  "notificationConfig": {}
 }
 ```
 
@@ -61,6 +69,10 @@ The following configuration values are required:
 - `rateLimit`
 - `concurrency`
 - `backoffStrategy`
+- `batchSize`
+- `parallelExecution`
+- `redisPipelining`
+- `notificationConfig`
 
 ## Example
 
@@ -79,6 +91,10 @@ WORKER_TIMEOUT=30000
 RATE_LIMIT=100
 CONCURRENCY=5
 BACKOFF_STRATEGY={"type":"exponential","delay":1000}
+BATCH_SIZE=1000
+PARALLEL_EXECUTION=true
+REDIS_PIPELINING=true
+NOTIFICATION_CONFIG={}
 ```
 
 2. Create a `config.json` file in the root directory of the project and add the following configuration values:
@@ -99,7 +115,11 @@ BACKOFF_STRATEGY={"type":"exponential","delay":1000}
   "backoffStrategy": {
     "type": "exponential",
     "delay": 1000
-  }
+  },
+  "batchSize": 1000,
+  "parallelExecution": true,
+  "redisPipelining": true,
+  "notificationConfig": {}
 }
 ```
 

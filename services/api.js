@@ -259,7 +259,10 @@ const popqueueProto = grpc.loadPackageDefinition(packageDefinition).popqueue;
 function getJobDetails(call, callback) {
     queue.getCurrentQueue('myJob')
         .then(jobDetails => callback(null, { jobDetails }))
-        .catch(error => callback(error));
+        .catch(error => {
+            logger.error('Error fetching job details:', error);
+            callback(error);
+        });
 }
 
 function requeueJob(call, callback) {
@@ -272,25 +275,37 @@ function requeueJob(call, callback) {
     }
     queue.requeueJob('myJob', jobId)
         .then(() => callback(null, { message: 'Job requeued successfully' }))
-        .catch(error => callback(error));
+        .catch(error => {
+            logger.error('Error requeuing job:', error);
+            callback(error);
+        });
 }
 
 function registerWorker(call, callback) {
     queue.registerWorker()
         .then(() => callback(null, { message: 'Worker registered successfully' }))
-        .catch(error => callback(error));
+        .catch(error => {
+            logger.error('Error registering worker:', error);
+            callback(error);
+        });
 }
 
 function deregisterWorker(call, callback) {
     queue.deregisterWorker()
         .then(() => callback(null, { message: 'Worker deregistered successfully' }))
-        .catch(error => callback(error));
+        .catch(error => {
+            logger.error('Error deregistering worker:', error);
+            callback(error);
+        });
 }
 
 function redistributeJobs(call, callback) {
     queue.redistributeJobs()
         .then(() => callback(null, { message: 'Jobs redistributed successfully' }))
-        .catch(error => callback(error));
+        .catch(error => {
+            logger.error('Error redistributing jobs:', error);
+            callback(error);
+        });
 }
 
 const server = new grpc.Server();

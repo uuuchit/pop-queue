@@ -129,73 +129,7 @@ class PopQueue extends EventEmitter {
     }
 
     async connect() {
-        await Promise.all([this.connectDb(), this.connectRedis()]);
-    }
-
-    async connectDb() {
-        try {
-            if (this.dbUrl.startsWith('postgres://')) {
-                this.db = await connectDb(this.dbUrl, this.dbName);
-                console.log('PostgreSQL connected');
-                await this.setupPostgresSchema();
-            } else {
-                this.db = await connectDb(this.dbUrl, this.dbName);
-                console.log('MongoDB connected');
-                if (this.mongoShardConfig) {
-                    await this.db.admin().command({ enableSharding: this.dbName });
-                    await this.db.admin().command({ shardCollection: `${this.dbName}.${this.cName}`, key: this.mongoShardConfig });
-                    console.log('MongoDB sharding enabled');
-                }
-            }
-        } catch (e) {
-            console.log(e);
-            this.logger.error('Error connecting to database:', e);
-        }
-    }
-
-    async connectRedis() {
-        try {
-            if (this.redisClusterConfig) {
-                this.redisClient = new Redis.Cluster(this.redisClusterConfig);
-                console.log('Redis cluster connected');
-            } else if (this.redis.startsWith('memcached://')) {
-                this.redisClient = await memcachedClient(this.redis);
-                console.log('Memcached connected');
-            } else {
-                this.redisClient = new Redis(this.redis);
-                console.log('Redis connected');
-            }
-            // this.redlock = new Redlock([this.redisClient], {
-            //     retryCount: 10,
-            //     retryDelay: 200
-            // });
-        } catch (e) {
-            console.log(e);
-            this.logger.error('Error connecting to Redis:', e);
-        }
-    }
-
-    async setupPostgresSchema() {
-        const createTableQuery = `
-            CREATE TABLE IF NOT EXISTS ${this.cName} (
-                id SERIAL PRIMARY KEY,
-                data JSONB,
-                createdAt TIMESTAMP,
-                name VARCHAR(255),
-                identifier VARCHAR(255) UNIQUE,
-                priority INT,
-                delay INT,
-                pickedAt TIMESTAMP,
-                finishedAt TIMESTAMP,
-                attempts INT DEFAULT 0,
-                status VARCHAR(50),
-                duration INT,
-                requeuedAt TIMESTAMP,
-                failedReason JSONB,
-                runHistory JSONB
-            );
-        `;
-        await this.db.query(createTableQuery);
+        await Promise.all([connectDb(this.dbUrl, this.dbName, this.mongoShardConfig), connectRedis(this.redis, this.redisClusterConfig)]);
     }
 
     async now(job, name, identifier, score, priority = 0, delay = 0) {
