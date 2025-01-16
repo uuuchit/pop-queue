@@ -92,8 +92,12 @@ async function popBatch(redisClient, redlock, name, batchSize) {
 async function pop(redisClient, redlock, name) {
     try {
         let stringDocument = await redisClient.zpopmin(`pop:queue:${name}`, 1);
+        if (stringDocument.length === 0) {
+            console.log("no document in redis");
+            return null;
+        }
         let valueDocument = await redisClient.get(`pop:queue:${name}:${stringDocument[0]}`);
-        if (!valueDocument || stringDocument.length == 0) {
+        if (!valueDocument) {
             console.log("no document in redis");
             return null;
         }
