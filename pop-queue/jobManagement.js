@@ -323,6 +323,10 @@ class PopQueue extends EventEmitter {
         job.progress = progress;
     }
 
+    async completionCallback(job, callback) {
+        job.completionCallback = callback;
+    }
+
     async schedule(name, cronExpression, jobFunction) {
         cron.schedule(cronExpression, async () => {
             await jobFunction();

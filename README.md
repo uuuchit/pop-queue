@@ -296,3 +296,24 @@ We welcome feature requests and suggestions for improvements. If you have an ide
 If you have any questions or need further assistance, feel free to reach out to the project maintainers by opening an issue 
 
 Thank you for your contributions and support!
+
+## Job Progress Tracking and Completion Callbacks
+
+To track job progress and receive completion callbacks, use the `progress` and `completionCallback` methods:
+
+```javascript
+queue.define('myJob', async (job) => {
+  console.log('Processing job:', job);
+  // Perform job processing logic here
+  queue.progress(job, 50); // Update job progress to 50%
+  // Perform more job processing logic here
+  queue.completionCallback(job, () => {
+    console.log('Job completed:', job);
+  });
+  return true;
+});
+```
+
+## API Endpoints
+
+For documentation on API endpoints, including getting job details, requeuing a job, registering and deregistering workers, redistributing jobs, enqueuing a job, starting the loop, failing a job, emitting events, registering event listeners, running a job, updating job progress, registering job completion callbacks, validating job data, checking job dependencies, fetching metrics, scheduling recurring jobs, handling job failures, notifying job events, and adding plugins, please visit the [API Endpoints](https://github.com/uuuchit/pop-queue/wiki/API-Endpoints) page in the GitHub wiki.

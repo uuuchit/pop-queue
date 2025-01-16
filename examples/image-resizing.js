@@ -1,4 +1,4 @@
-const { PopQueue } = require('../queue');
+const { PopQueue } = require('pop-queue');
 const sharp = require('sharp');
 
 const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
