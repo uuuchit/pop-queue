@@ -13,6 +13,7 @@ const Redlock = require('redlock');
 class PopQueue extends EventEmitter {
     constructor(dbUrl, redis, dbName, cName, retries, mongoShardConfig = null, redisClusterConfig = null, workerId = null, memcachedUrl = null, postgresUrl = null) {
         super();
+        // Initialize database and Redis configurations
         this.dbUrl = dbUrl || config.dbUrl;
         this.redis = redis || config.redisUrl;
         this.cName = cName || config.collectionName;
@@ -67,6 +68,7 @@ class PopQueue extends EventEmitter {
     }
 
     async define(name, fn, options = {}) {
+        // Define a job with its processing function and options
         this.runners[name] = {
             fn,
             options,
@@ -84,6 +86,7 @@ class PopQueue extends EventEmitter {
     }
 
     async start(runLoop) {
+        // Register the worker and start the job processing loop
         await this.registerWorker();
         await this.startLoop();
         setInterval(async () => {
@@ -91,6 +94,7 @@ class PopQueue extends EventEmitter {
                 await this.startLoop();
             }
         }, 1000)
+        // Initiate the heartbeat for the worker
         this.startHeartbeat();
     }
 
@@ -135,6 +139,7 @@ class PopQueue extends EventEmitter {
     }
 
     async now(job, name, identifier, score, priority = 0, delay = 0) {
+        // Enqueue a job for immediate processing
         try {
             let document = {data: job, createdAt: new Date(), name, identifier, priority, delay};
             if (!this.db || !this.redisClient) {
@@ -164,6 +169,7 @@ class PopQueue extends EventEmitter {
     }
 
     async run(name) {
+        // Process jobs from the queue using the defined job functions
         let jobs = await this.popBatch(name, this.batchSize);
         if (!jobs || jobs.length === 0) {
             let error = new Error(`No job for ${name}`);
