@@ -1,7 +1,5 @@
 const { sleep, parseDocFromRedis } = require('../utils/helpers.js');
 const winston = require('winston');
-const { pushToQueue, pushToBatchQueue, popBatch, pop, finish, fail, moveToDeadLetterQueue } = require('./jobManagement');
-
 const logger = winston.createLogger({
     level: 'info',
     format: winston.format.json(),
@@ -15,7 +13,7 @@ const logger = winston.createLogger({
 async function pushToQueue(redisClient, document, name, identifier, score, priority = 0, delay = 0) {
     try {
         score = new Date().getTime() + delay - priority;
-        const pipeline = redisClient.pipeline();
+        const pipeline = this.redisClient.pipeline();
         pipeline.zadd(`pop:queue:${name}`, score, identifier);
         pipeline.set(`pop:queue:${name}:${identifier}`, JSON.stringify(document));
         await pipeline.exec();
@@ -27,7 +25,7 @@ async function pushToQueue(redisClient, document, name, identifier, score, prior
 
 async function pushToBatchQueue(redisClient, documents, name) {
     try {
-        const pipeline = redisClient.pipeline();
+        const pipeline = this.redisClient.pipeline();
         for (const document of documents) {
             const { identifier, priority = 0, delay = 0 } = document;
             const score = new Date().getTime() + delay - priority;
@@ -43,7 +41,7 @@ async function pushToBatchQueue(redisClient, documents, name) {
 
 async function popBatch(redisClient, redlock, name, batchSize) {
     try {
-        const pipeline = redisClient.pipeline();
+        const pipeline = this.redisClient.pipeline();
         for (let i = 0; i < batchSize; i++) {
             pipeline.zpopmin(`pop:queue:${name}`, 1);
         }
@@ -54,7 +52,7 @@ async function popBatch(redisClient, redlock, name, batchSize) {
             if (stringDocument.length === 0) {
                 continue;
             }
-            const valueDocument = await redisClient.get(`pop:queue:${name}:${stringDocument[0]}`);
+            const valueDocument = await this.redisClient.get(`pop:queue:${name}:${stringDocument[0]}`);
             if (!valueDocument) {
                 continue;
             }
@@ -67,9 +65,9 @@ async function popBatch(redisClient, redlock, name, batchSize) {
                     SET attempts = attempts + 1, pickedAt = $1
                     WHERE identifier = $2;
                 `;
-                await this.db.query(updateQuery, [pickedTime, document.identifier]);
+                await this.this.db.query(updateQuery, [pickedTime, document.identifier]);
             } else {
-                await this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({
+                await this.this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({
                     identifier: document.identifier
                 }, {
                     $inc: {
@@ -91,12 +89,12 @@ async function popBatch(redisClient, redlock, name, batchSize) {
 
 async function pop(redisClient, redlock, name) {
     try {
-        let stringDocument = await redisClient.zpopmin(`pop:queue:${name}`, 1);
+        let stringDocument = await this.redisClient.zpopmin(`pop:queue:${name}`, 1);
         if (stringDocument.length === 0) {
             console.log("no document in redis");
             return null;
         }
-        let valueDocument = await redisClient.get(`pop:queue:${name}:${stringDocument[0]}`);
+        let valueDocument = await this.redisClient.get(`pop:queue:${name}:${stringDocument[0]}`);
         if (!valueDocument) {
             console.log("no document in redis");
             return null;
@@ -110,9 +108,9 @@ async function pop(redisClient, redlock, name) {
                 SET attempts = attempts + 1, pickedAt = $1
                 WHERE identifier = $2;
             `;
-            await this.db.query(updateQuery, [pickedTime, document.identifier]);
+            await this.this.db.query(updateQuery, [pickedTime, document.identifier]);
         } else {
-            await this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({
+            await this.this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({
                 identifier: document.identifier
             }, {
                 $inc: {
@@ -139,9 +137,9 @@ async function finish(db, redisClient, document, name) {
                 SET finishedAt = $1, duration = $2, delay = $3, status = 'done'
                 WHERE identifier = $4;
             `;
-            await db.query(updateQuery, [finishTime, finishTime - document.pickedAt, finishTime - document.createdAt, document.identifier]);
+            await this.db.query(updateQuery, [finishTime, finishTime - document.pickedAt, finishTime - document.createdAt, document.identifier]);
         } else {
-            await db.collection(this.getDbCollectionName(document.name)).findOneAndUpdate({
+            await this.db.collection(this.getDbCollectionName(document.name)).findOneAndUpdate({
                 identifier: document.identifier
             }, {
                 $set: {
@@ -152,7 +150,7 @@ async function finish(db, redisClient, document, name) {
                 }
             });
         }
-        await redisClient.del(`pop:queue:${name}:${document.identifier}`);
+        await this.redisClient.del(`pop:queue:${name}:${document.identifier}`);
         this.metrics.jobsSucceeded++;
         this.metrics.jobDuration.push(finishTime - document.pickedAt);
         this.emit('jobFinished', document);
@@ -175,9 +173,9 @@ async function fail(db, redisClient, document, reason, force) {
                     SET finishedAt = $1, status = 'failed', requeuedAt = $2, failedReason = COALESCE(failedReason, '[]'::jsonb) || $3::jsonb
                     WHERE identifier = $4;
                 `;
-                await db.query(updateQuery, [finishTime, new Date(), JSON.stringify({ reason, time: new Date() }), document.identifier]);
+                await this.db.query(updateQuery, [finishTime, new Date(), JSON.stringify({ reason, time: new Date() }), document.identifier]);
             } else {
-                await db.collection(this.getDbCollectionName(document.name)).findOneAndUpdate({
+                await this.db.collection(this.getDbCollectionName(document.name)).findOneAndUpdate({
                     identifier: document.identifier
                 }, {
                     $push: {
@@ -206,7 +204,7 @@ async function fail(db, redisClient, document, reason, force) {
                     WHERE identifier = $4
                     RETURNING *;
                 `;
-                const result = await db.query(updateQuery, [new Date(), JSON.stringify({ reason, time: new Date() }), JSON.stringify({
+                const result = await this.db.query(updateQuery, [new Date(), JSON.stringify({ reason, time: new Date() }), JSON.stringify({
                     pickedAt: document.pickedAt,
                     finishedAt: document.finishedAt,
                     status: document.status,
@@ -218,7 +216,7 @@ async function fail(db, redisClient, document, reason, force) {
                     await pushToQueue(redisClient, newDocument, newDocument.name, newDocument.identifier);
                 }
             } else {
-                let newDocument = await db.collection(this.getDbCollectionName(document.name)).findOneAndUpdate({
+                let newDocument = await this.db.collection(this.getDbCollectionName(document.name)).findOneAndUpdate({
                     identifier: document.identifier
                 }, {
                     $unset: {
@@ -262,9 +260,9 @@ async function moveToDeadLetterQueue(document, db, dbUrl, logger) {
                 INSERT INTO dead_letter_queue (data, createdAt, name, identifier, priority, delay, pickedAt, finishedAt, attempts, status, duration, requeuedAt, failedReason, runHistory)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);
             `;
-            await db.query(insertQuery, [document.data, document.createdAt, document.name, document.identifier, document.priority, document.delay, document.pickedAt, document.finishedAt, document.attempts, document.status, document.duration, document.requeuedAt, document.failedReason, document.runHistory]);
+            await this.db.query(insertQuery, [document.data, document.createdAt, document.name, document.identifier, document.priority, document.delay, document.pickedAt, document.finishedAt, document.attempts, document.status, document.duration, document.requeuedAt, document.failedReason, document.runHistory]);
         } else {
-            await db.collection('dead_letter_queue').insertOne(document);
+            await this.db.collection('dead_letter_queue').insertOne(document);
         }
     } catch (e) {
         console.log(e);

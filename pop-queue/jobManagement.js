@@ -126,7 +126,12 @@ class PopQueue extends EventEmitter {
     }
 
     async connect() {
-        await Promise.all([connectDb(this.dbUrl, this.dbName, this.mongoShardConfig), connectRedis(this.redis, this.redisClusterConfig)]);
+        const [db, redisClient] = await Promise.all([
+            connectDb(this.dbUrl, this.dbName, this.mongoShardConfig),
+            connectRedis(this.redis, this.redisClusterConfig)
+        ]);
+        this.db = db;
+        this.redisClient = redisClient;
     }
 
     async now(job, name, identifier, score, priority = 0, delay = 0) {
@@ -207,6 +212,9 @@ class PopQueue extends EventEmitter {
 
     async requeueJob(name, documentId) {
         try {
+            if(!this.db) {
+                await this.connect();
+            }
             let doc = await this.db.collection(this.getDbCollectionName(name)).findOne({
                 _id: documentId
             });

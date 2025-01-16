@@ -17,8 +17,8 @@ let config = {
     concurrency: process.env.CONCURRENCY || 5,
     backoffStrategy: process.env.BACKOFF_STRATEGY || { type: 'exponential', delay: 1000 },
     batchSize: process.env.BATCH_SIZE || 1000,
-    parallelExecution: process.env.PARALLEL_EXECUTION === 'true',
-    redisPipelining: process.env.REDIS_PIPELINING === 'true',
+    parallelExecution: process.env.PARALLEL_EXECUTION || true,
+    redisPipelining: process.env.REDIS_PIPELINING || true,
     notificationConfig: process.env.NOTIFICATION_CONFIG || {}
 };
 

@@ -27,11 +27,11 @@ async function connectRedis(redisUrl, redisClusterConfig) {
             rClient = await redisClient(redisUrl);
             console.log('Redis connected');
         }
-        const redlock = new Redlock([rClient], {
-            retryCount: 10,
-            retryDelay: 200
-        });
-        return { rClient, redlock };
+        // const redlock = new Redlock([rClient], {
+        //     retryCount: 10,
+        //     retryDelay: 200
+        // });
+        return rClient;
     } catch (e) {
         console.log(e);
         logger.error('Error connecting to Redis:', e);
