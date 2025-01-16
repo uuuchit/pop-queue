@@ -1,4 +1,4 @@
-const { PopQueue } = require('../pop-queue/queue');
+const { PopQueue } = require('../pop-queue/index');
 const { MongoClient } = require('mongodb');
 const Redis = require('ioredis');
 const winston = require('winston');
@@ -89,5 +89,51 @@ describe('PopQueue - Job Definition and Enqueue', () => {
         expect(redisMock.zadd).toHaveBeenCalledWith(`pop:queue:${jobName}`, expect.any(Number), jobIdentifier);
         expect(redisMock.set).toHaveBeenCalledWith(`pop:queue:${jobName}:${jobIdentifier}`, expect.any(String));
         expect(redisMock.exec).toHaveBeenCalled();
+    });
+
+    test('should handle job definition with schema validation', () => {
+        const jobFn = jest.fn();
+        const jobSchema = {
+            type: 'object',
+            properties: {
+                data: { type: 'string' }
+            },
+            required: ['data']
+        };
+        queue.define('testJobWithSchema', jobFn, { schema: jobSchema });
+        expect(queue.runners['testJobWithSchema'].fn).toBe(jobFn);
+        expect(queue.jobSchemas['testJobWithSchema']).toBe(jobSchema);
+    });
+
+    test('should handle job definition with dependencies', () => {
+        const jobFn = jest.fn();
+        const jobDependencies = ['dependentJob'];
+        queue.define('testJobWithDependencies', jobFn, { dependencies: jobDependencies });
+        expect(queue.runners['testJobWithDependencies'].fn).toBe(jobFn);
+        expect(queue.jobDependencies['testJobWithDependencies']).toBe(jobDependencies);
+    });
+
+    test('should handle job definition with middleware', () => {
+        const jobFn = jest.fn();
+        const middleware = jest.fn();
+        queue.define('testJobWithMiddleware', jobFn, { middleware });
+        expect(queue.runners['testJobWithMiddleware'].fn).toBe(jobFn);
+        expect(queue.runners['testJobWithMiddleware'].middleware).toBe(middleware);
+    });
+
+    test('should handle job definition with custom collection name', () => {
+        const jobFn = jest.fn();
+        const customCollectionName = 'customCollection';
+        queue.define('testJobWithCustomCollection', jobFn, { cName: customCollectionName });
+        expect(queue.runners['testJobWithCustomCollection'].fn).toBe(jobFn);
+        expect(queue.runners['testJobWithCustomCollection'].cName).toBe(customCollectionName);
+    });
+
+    test('should handle job definition with completion callback', () => {
+        const jobFn = jest.fn();
+        const completionCallback = jest.fn();
+        queue.define('testJobWithCompletionCallback', jobFn, { completionCallback });
+        expect(queue.runners['testJobWithCompletionCallback'].fn).toBe(jobFn);
+        expect(queue.runners['testJobWithCompletionCallback'].options.completionCallback).toBe(completionCallback);
     });
 });

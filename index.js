@@ -1,4 +1,4 @@
-const  PopQueue  = require('./services/queue');
+const { PopQueue } = require('./pop-queue/index');
 
 module.exports = {
     PopQueue,

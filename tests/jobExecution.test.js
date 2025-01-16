@@ -1,4 +1,4 @@
-const { PopQueue } = require('../pop-queue/queue');
+const { PopQueue } = require('../pop-queue/index');
 const { MongoClient } = require('mongodb');
 const Redis = require('ioredis');
 const winston = require('winston');
@@ -141,5 +141,75 @@ describe('PopQueue - Job Execution', () => {
             { identifier: jobIdentifier },
             { $inc: { attempts: 1 }, $set: { pickedAt: expect.any(Date) } }
         );
+    });
+
+    test('should handle job execution with retries and backoff', async () => {
+        const jobName = 'testJob';
+        const jobIdentifier = 'testIdentifier';
+        const jobData = { data: 'testData', createdAt: new Date(), name: jobName, identifier: jobIdentifier, pickedAt: new Date(), attempts: 1 };
+
+        dbMock.findOneAndUpdate.mockResolvedValue({ value: jobData });
+
+        await queue.fail(jobData, 'testReason');
+
+        expect(dbMock.collection).toHaveBeenCalledWith('testCollection');
+        expect(dbMock.findOneAndUpdate).toHaveBeenCalledWith(
+            { identifier: jobIdentifier },
+            {
+                $unset: { pickedAt: 1, finishedAt: 1, status: 1, duration: 1 },
+                $push: {
+                    failedReason: { reason: 'testReason', time: expect.any(Date) },
+                    runHistory: expect.any(Object)
+                },
+                $set: { requeuedAt: expect.any(Date) }
+            },
+            { new: true }
+        );
+    });
+
+    test('should handle job requeueing', async () => {
+        const jobName = 'testJob';
+        const documentId = 'testDocumentId';
+        const jobData = { data: 'testData', createdAt: new Date(), name: jobName, identifier: 'testIdentifier' };
+
+        dbMock.findOne.mockResolvedValue(jobData);
+
+        await queue.requeueJob(jobName, documentId);
+
+        expect(dbMock.collection).toHaveBeenCalledWith('testCollection');
+        expect(dbMock.findOne).toHaveBeenCalledWith({ _id: documentId });
+        expect(dbMock.findOneAndUpdate).toHaveBeenCalledWith(
+            { identifier: jobData.identifier },
+            {
+                $unset: { pickedAt: 1, finishedAt: 1, status: 1, duration: 1 },
+                $push: {
+                    failedReason: { reason: 'Unknown, manually Requeued', time: expect.any(Date) },
+                    runHistory: expect.any(Object)
+                },
+                $set: { requeuedAt: expect.any(Date) }
+            },
+            { new: true }
+        );
+    });
+
+    test('should handle job execution with custom completion callback', async () => {
+        const jobName = 'testJob';
+        const jobIdentifier = 'testIdentifier';
+        const jobData = { data: 'testData', createdAt: new Date(), name: jobName, identifier: jobIdentifier, pickedAt: new Date() };
+
+        const completionCallback = jest.fn();
+
+        queue.define(jobName, async (job) => {
+            job.progress = 50;
+            await queue.emitEvent('jobProgress', job);
+            return true;
+        }, { completionCallback });
+
+        redisMock.zpopmin.mockResolvedValue([jobIdentifier]);
+        redisMock.get.mockResolvedValue(JSON.stringify(jobData));
+
+        await queue.run(jobName);
+
+        expect(completionCallback).toHaveBeenCalledWith(expect.objectContaining(jobData));
     });
 });

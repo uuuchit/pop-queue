@@ -1,5 +1,5 @@
-const { mongoClient } = require('../utils/mongo.js');
-const { postgresClient } = require('../utils/postgres.js');
+const { mongoClient } = require('../utils/mongo');
+const { postgresClient } = require('../utils/postgres');
 const config = require('../config/config.js');
 const winston = require('winston');
 
