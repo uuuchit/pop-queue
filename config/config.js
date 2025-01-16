@@ -17,8 +17,9 @@ let config = {
     concurrency: process.env.CONCURRENCY || 5,
     backoffStrategy: process.env.BACKOFF_STRATEGY || { type: 'exponential', delay: 1000 },
     batchSize: process.env.BATCH_SIZE || 1000,
-    parallelExecution: process.env.PARALLEL_EXECUTION || true,
-    redisPipelining: process.env.REDIS_PIPELINING || true
+    parallelExecution: process.env.PARALLEL_EXECUTION === 'true',
+    redisPipelining: process.env.REDIS_PIPELINING === 'true',
+    notificationConfig: process.env.NOTIFICATION_CONFIG || {}
 };
 
 if (fs.existsSync(configPath)) {
@@ -27,7 +28,7 @@ if (fs.existsSync(configPath)) {
 }
 
 // Validate configuration values
-const requiredConfigKeys = ['dbUrl', 'redisUrl', 'memcachedUrl', 'postgresUrl', 'dbName', 'collectionName', 'retries', 'workerId', 'workerTimeout', 'rateLimit', 'concurrency', 'backoffStrategy', 'batchSize', 'parallelExecution', 'redisPipelining'];
+const requiredConfigKeys = ['dbUrl', 'redisUrl', 'memcachedUrl', 'postgresUrl', 'dbName', 'collectionName', 'retries', 'workerId', 'workerTimeout', 'rateLimit', 'concurrency', 'backoffStrategy', 'batchSize', 'parallelExecution', 'redisPipelining', 'notificationConfig'];
 requiredConfigKeys.forEach(key => {
     if (!config[key]) {
         throw new Error(`Missing required configuration value: ${key}`);
@@ -55,6 +56,9 @@ requiredConfigKeys.forEach(key => {
     }
     if (key === 'redisPipelining' && typeof config[key] !== 'boolean') {
         throw new Error(`Invalid configuration value for ${key}: must be a boolean`);
+    }
+    if (key === 'notificationConfig' && typeof config[key] !== 'object') {
+        throw new Error(`Invalid configuration value for ${key}: must be an object`);
     }
 });
 

@@ -63,10 +63,7 @@ class PopQueue extends EventEmitter {
         this.finish = finish.bind(this);
         this.fail = fail.bind(this);
         this.moveToDeadLetterQueue = moveToDeadLetterQueue.bind(this);
-        // this.getQueueLength = getQueueLength.bind(this);
-        // this.getCurrentQueue = getCurrentQueue.bind(this);
         this.pop = pop.bind(this);
-
     }
 
     async define(name, fn, options = {}) {
@@ -87,7 +84,7 @@ class PopQueue extends EventEmitter {
     }
 
     async start(runLoop) {
-        // await this.registerWorker();
+        await this.registerWorker();
         await this.startLoop();
         setInterval(async () => {
             if (!this.loopRunning) {
@@ -129,73 +126,7 @@ class PopQueue extends EventEmitter {
     }
 
     async connect() {
-        await Promise.all([this.connectDb(), this.connectRedis()]);
-    }
-
-    async connectDb() {
-        try {
-            if (this.dbUrl.startsWith('postgres://')) {
-                this.db = await connectDb(this.dbUrl, this.dbName);
-                console.log('PostgreSQL connected');
-                await this.setupPostgresSchema();
-            } else {
-                this.db = await connectDb(this.dbUrl, this.dbName);
-                console.log('MongoDB connected');
-                if (this.mongoShardConfig) {
-                    await this.db.admin().command({ enableSharding: this.dbName });
-                    await this.db.admin().command({ shardCollection: `${this.dbName}.${this.cName}`, key: this.mongoShardConfig });
-                    console.log('MongoDB sharding enabled');
-                }
-            }
-        } catch (e) {
-            console.log(e);
-            this.logger.error('Error connecting to database:', e);
-        }
-    }
-
-    async connectRedis() {
-        try {
-            if (this.redisClusterConfig) {
-                this.redisClient = new Redis.Cluster(this.redisClusterConfig);
-                console.log('Redis cluster connected');
-            } else if (this.redis.startsWith('memcached://')) {
-                this.redisClient = await memcachedClient(this.redis);
-                console.log('Memcached connected');
-            } else {
-                this.redisClient = new Redis(this.redis);
-                console.log('Redis connected');
-            }
-            // this.redlock = new Redlock([this.redisClient], {
-            //     retryCount: 10,
-            //     retryDelay: 200
-            // });
-        } catch (e) {
-            console.log(e);
-            this.logger.error('Error connecting to Redis:', e);
-        }
-    }
-
-    async setupPostgresSchema() {
-        const createTableQuery = `
-            CREATE TABLE IF NOT EXISTS ${this.cName} (
-                id SERIAL PRIMARY KEY,
-                data JSONB,
-                createdAt TIMESTAMP,
-                name VARCHAR(255),
-                identifier VARCHAR(255) UNIQUE,
-                priority INT,
-                delay INT,
-                pickedAt TIMESTAMP,
-                finishedAt TIMESTAMP,
-                attempts INT DEFAULT 0,
-                status VARCHAR(50),
-                duration INT,
-                requeuedAt TIMESTAMP,
-                failedReason JSONB,
-                runHistory JSONB
-            );
-        `;
-        await this.db.query(createTableQuery);
+        await Promise.all([connectDb(this.dbUrl, this.dbName, this.mongoShardConfig), connectRedis(this.redis, this.redisClusterConfig)]);
     }
 
     async now(job, name, identifier, score, priority = 0, delay = 0) {
@@ -220,7 +151,7 @@ class PopQueue extends EventEmitter {
             } else {
                 await this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({identifier}, {$set: document}, {upsert: true});
             }
-            await pushToQueue(this.redisClient, document, name, identifier, score, priority, delay);
+            await this.pushToQueue(document, name, identifier, score, priority, delay);
         } catch(e) {
             console.log(e);
             this.logger.error('Error enqueuing job:', e);
@@ -228,8 +159,8 @@ class PopQueue extends EventEmitter {
     }
 
     async run(name) {
-        let jobs = await this.popBatch(this.redisClient, this.redlock, name, this.batchSize, this.dbUrl);
-        if (!jobs.length) {
+        let jobs = await this.popBatch(name, this.batchSize);
+        if (!jobs || jobs.length === 0) {
             let error = new Error(`No job for ${name}`);
             error.code = 404;
             throw error;
@@ -244,14 +175,14 @@ class PopQueue extends EventEmitter {
                         const isSuccess = await this.runners[name].fn(job);
                         this.progress(job, 50); // Update job progress to 50%
                         if(isSuccess) {
-                            await this.finish(this.db, this.redisClient, job, name);
+                            await this.finish(job, name);
                         }
                         else{
-                            await this.fail(this.db, this.redisClient, job, "Failed");
+                            await this.fail(job, "Failed");
                         }
                         clearTimeout(fnTimeout);
                     } catch(err) {
-                        await this.fail(this.db, this.redisClient, job, err.toString());
+                        await this.fail(job, err.toString());
                     }
                     this.emitEvent('jobFinished', job);
                 });
@@ -264,7 +195,7 @@ class PopQueue extends EventEmitter {
                 }
             } else {
                 for (const job of jobs) {
-                    await this.fail(this.db, this.redisClient, job, `Runner ${name} not defined`);
+                    await this.fail(job, `Runner ${name} not defined`);
                 }
                 throw new Error('Runner not defined');
             }
@@ -279,7 +210,7 @@ class PopQueue extends EventEmitter {
             let doc = await this.db.collection(this.getDbCollectionName(name)).findOne({
                 _id: documentId
             });
-            await fail(this.db, this.redisClient, doc, "Unknown, manually Requeued", true);
+            await this.fail(doc, "Unknown, manually Requeued", true);
         } catch(e) {
             console.log(e);
             this.logger.error('Error requeuing job:', e);
@@ -351,11 +282,11 @@ class PopQueue extends EventEmitter {
                 return;
             }
 
-            const jobs = await getCurrentQueue(this.redisClient, 'myJob');
+            const jobs = await this.getCurrentQueue('myJob');
             for (let job of jobs) {
                 const workerIndex = Math.floor(Math.random() * workers.length);
                 const workerId = workers[workerIndex];
-                await pushToQueue(this.redisClient, job, 'myJob', job.identifier, Date.now(), 0, 0);
+                await this.pushToQueue(job, 'myJob', job.identifier, Date.now(), 0, 0);
             }
         } catch (e) {
             console.log(e);
@@ -392,39 +323,15 @@ class PopQueue extends EventEmitter {
         job.progress = progress;
     }
 
+    async completionCallback(job, callback) {
+        job.completionCallback = callback;
+    }
+
     async schedule(name, cronExpression, jobFunction) {
         cron.schedule(cronExpression, async () => {
             await jobFunction();
         });
     }
-    async pop (name) {
-        return await this.pop(this.redisClient, name);
-    }
-    async finish (job, name) {
-        return await this.finish(this.db, this.redisClient, job, name);
-    }
-    async fail (job, name) {
-        return await this.fail(this.db, this.redisClient, job, name);
-    }
-    async moveToDeadLetterQueue (job, name) {
-        return await this.moveToDeadLetterQueue(this.db, this.redisClient, job, name);
-    }
-    async getQueueLength(name) {
-        return await this.getQueueLength(this.redisClient, name);
-    }
-    async getCurrentQueue(name) {
-        return await this.getCurrentQueue(this.redisClient, name);
-    }
-    async popBatch(name, batchSize) {
-        return await this.popBatch(this.redisClient, name, batchSize, this.dbUrl);
-    }
-    async pushToBatchQueue(job, name, identifier, score, priority = 0, delay = 0) {
-        return await this.pushToBatchQueue(this.redisClient, job, name, identifier, score, priority, delay);
-    }
-    async pushToQueue(job, name, identifier, score, priority = 0, delay = 0) {
-        return await this.pushToQueue(this.redisClient, job, name, identifier, score, priority, delay);
-    }
-
 }
 
 module.exports = {

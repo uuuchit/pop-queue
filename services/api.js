@@ -85,6 +85,9 @@ app.post('/api/redistribute-jobs', async (req, res) => {
 app.post('/api/now', async (req, res) => {
     try {
         const { jobData, jobName, jobIdentifier, jobScore, priority, delay } = req.body;
+        if (!jobData || !jobName || !jobIdentifier || !jobScore) {
+            return res.status(400).json({ error: 'Invalid or missing job data' });
+        }
         await queue.now(jobData, jobName, jobIdentifier, jobScore, priority, delay);
         res.status(200).json({ message: 'Job enqueued successfully' });
     } catch (error) {
@@ -106,6 +109,9 @@ app.post('/api/start-loop', async (req, res) => {
 app.post('/api/fail', async (req, res) => {
     try {
         const { jobData, reason, force } = req.body;
+        if (!jobData || !reason) {
+            return res.status(400).json({ error: 'Invalid or missing job data or reason' });
+        }
         await queue.fail(jobData, reason, force);
         res.status(200).json({ message: 'Job failed successfully' });
     } catch (error) {
@@ -117,6 +123,9 @@ app.post('/api/fail', async (req, res) => {
 app.post('/api/emit-event', async (req, res) => {
     try {
         const { event, data } = req.body;
+        if (!event || !data) {
+            return res.status(400).json({ error: 'Invalid or missing event or data' });
+        }
         await queue.emitEvent(event, data);
         res.status(200).json({ message: 'Event emitted successfully' });
     } catch (error) {
@@ -128,6 +137,9 @@ app.post('/api/emit-event', async (req, res) => {
 app.post('/api/on', async (req, res) => {
     try {
         const { event, hook } = req.body;
+        if (!event || !hook) {
+            return res.status(400).json({ error: 'Invalid or missing event or hook' });
+        }
         await queue.on(event, hook);
         res.status(200).json({ message: 'Event listener registered successfully' });
     } catch (error) {
@@ -139,6 +151,9 @@ app.post('/api/on', async (req, res) => {
 app.post('/api/run', async (req, res) => {
     try {
         const { jobName, jobIdentifier, jobData } = req.body;
+        if (!jobName || !jobIdentifier || !jobData) {
+            return res.status(400).json({ error: 'Invalid or missing job data' });
+        }
         await queue.run(jobName, jobIdentifier, jobData);
         res.status(200).json({ message: 'Job run successfully' });
     } catch (error) {
@@ -150,6 +165,9 @@ app.post('/api/run', async (req, res) => {
 app.post('/api/job-progress', async (req, res) => {
     try {
         const { jobId, progress } = req.body;
+        if (!jobId || typeof progress !== 'number') {
+            return res.status(400).json({ error: 'Invalid or missing jobId or progress' });
+        }
         await queue.progress(jobId, progress);
         res.status(200).json({ message: 'Job progress updated successfully' });
     } catch (error) {
@@ -161,6 +179,9 @@ app.post('/api/job-progress', async (req, res) => {
 app.post('/api/job-completion-callback', async (req, res) => {
     try {
         const { jobId, callbackUrl } = req.body;
+        if (!jobId || !callbackUrl) {
+            return res.status(400).json({ error: 'Invalid or missing jobId or callbackUrl' });
+        }
         await queue.completionCallback(jobId, callbackUrl);
         res.status(200).json({ message: 'Job completion callback registered successfully' });
     } catch (error) {
@@ -172,6 +193,9 @@ app.post('/api/job-completion-callback', async (req, res) => {
 app.post('/api/validate-job-data', async (req, res) => {
     try {
         const { jobName, jobData } = req.body;
+        if (!jobName || !jobData) {
+            return res.status(400).json({ error: 'Invalid or missing jobName or jobData' });
+        }
         await queue.validateJobData(jobName, jobData);
         res.status(200).json({ message: 'Job data validated successfully' });
     } catch (error) {
@@ -183,6 +207,9 @@ app.post('/api/validate-job-data', async (req, res) => {
 app.post('/api/check-job-dependencies', async (req, res) => {
     try {
         const { jobName } = req.body;
+        if (!jobName) {
+            return res.status(400).json({ error: 'Invalid or missing jobName' });
+        }
         await queue.checkJobDependencies(jobName);
         res.status(200).json({ message: 'Job dependencies checked successfully' });
     } catch (error) {
@@ -204,6 +231,9 @@ app.get('/api/metrics', async (req, res) => {
 app.post('/api/schedule-recurring-job', async (req, res) => {
     try {
         const { jobName, cronExpression, jobData, identifier, priority } = req.body;
+        if (!jobName || !cronExpression || !jobData || !identifier) {
+            return res.status(400).json({ error: 'Invalid or missing job data' });
+        }
         await queue.scheduleRecurringJob(jobName, cronExpression, jobData, identifier, priority);
         res.status(200).json({ message: 'Recurring job scheduled successfully' });
     } catch (error) {
@@ -215,6 +245,9 @@ app.post('/api/schedule-recurring-job', async (req, res) => {
 app.post('/api/handle-job-failure', async (req, res) => {
     try {
         const { jobData, reason, force } = req.body;
+        if (!jobData || !reason) {
+            return res.status(400).json({ error: 'Invalid or missing job data or reason' });
+        }
         await queue.fail(jobData, reason, force);
         res.status(200).json({ message: 'Job failure handled successfully' });
     } catch (error) {
@@ -226,6 +259,9 @@ app.post('/api/handle-job-failure', async (req, res) => {
 app.post('/api/notify-job-event', async (req, res) => {
     try {
         const { event, data } = req.body;
+        if (!event || !data) {
+            return res.status(400).json({ error: 'Invalid or missing event or data' });
+        }
         await queue.notifySystems(event, data);
         res.status(200).json({ message: 'Job event notification sent successfully' });
     } catch (error) {
@@ -237,6 +273,9 @@ app.post('/api/notify-job-event', async (req, res) => {
 app.post('/api/add-plugin', async (req, res) => {
     try {
         const { plugin } = req.body;
+        if (!plugin) {
+            return res.status(400).json({ error: 'Invalid or missing plugin' });
+        }
         await queue.addPlugin(plugin);
         res.status(200).json({ message: 'Plugin added successfully' });
     } catch (error) {
@@ -259,7 +298,10 @@ const popqueueProto = grpc.loadPackageDefinition(packageDefinition).popqueue;
 function getJobDetails(call, callback) {
     queue.getCurrentQueue('myJob')
         .then(jobDetails => callback(null, { jobDetails }))
-        .catch(error => callback(error));
+        .catch(error => {
+            logger.error('Error fetching job details:', error);
+            callback(error);
+        });
 }
 
 function requeueJob(call, callback) {
@@ -272,25 +314,37 @@ function requeueJob(call, callback) {
     }
     queue.requeueJob('myJob', jobId)
         .then(() => callback(null, { message: 'Job requeued successfully' }))
-        .catch(error => callback(error));
+        .catch(error => {
+            logger.error('Error requeuing job:', error);
+            callback(error);
+        });
 }
 
 function registerWorker(call, callback) {
     queue.registerWorker()
         .then(() => callback(null, { message: 'Worker registered successfully' }))
-        .catch(error => callback(error));
+        .catch(error => {
+            logger.error('Error registering worker:', error);
+            callback(error);
+        });
 }
 
 function deregisterWorker(call, callback) {
     queue.deregisterWorker()
         .then(() => callback(null, { message: 'Worker deregistered successfully' }))
-        .catch(error => callback(error));
+        .catch(error => {
+            logger.error('Error deregistering worker:', error);
+            callback(error);
+        });
 }
 
 function redistributeJobs(call, callback) {
     queue.redistributeJobs()
         .then(() => callback(null, { message: 'Jobs redistributed successfully' }))
-        .catch(error => callback(error));
+        .catch(error => {
+            logger.error('Error redistributing jobs:', error);
+            callback(error);
+        });
 }
 
 const server = new grpc.Server();

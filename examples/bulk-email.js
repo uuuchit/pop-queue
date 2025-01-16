@@ -1,4 +1,4 @@
-const { PopQueue } = require('../queue');
+const { PopQueue } = require('pop-queue');
 const nodemailer = require('nodemailer');
 
 const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
