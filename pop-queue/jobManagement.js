@@ -160,7 +160,7 @@ class PopQueue extends EventEmitter {
 
     async run(name) {
         let jobs = await this.popBatch(name, this.batchSize);
-        if (!jobs.length) {
+        if (!jobs || jobs.length === 0) {
             let error = new Error(`No job for ${name}`);
             error.code = 404;
             throw error;

@@ -90,7 +90,7 @@ async function failJob(document, reason, force, db, dbUrl, retries, redisClient,
                         requeuedAt: new Date()
                     }
                 }, {new: true});
-                if(newDocument.value && newDocument.value.name) {
+                if(newDocument && newDocument.value && newDocument.value.name) {
                     await sleep(2000);
                     await pushToQueue(newDocument.value, newDocument.value.name, newDocument.value.identifier, redisClient, redlock);
                 }
