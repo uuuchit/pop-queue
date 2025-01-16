@@ -105,6 +105,13 @@ describe('PopQueue - Job Definition and Enqueue', () => {
         queue.define('testJobWithSchema', jobFn, { schema: jobSchema });
         expect(queue.runners['testJobWithSchema'].fn).toBe(jobFn);
         expect(queue.jobSchemas['testJobWithSchema']).toBe(jobSchema);
+        const validData = { data: 'test' };  
+       expect(() => queue.validateJobData('testJobWithSchema', validData)).not.toThrow();  
+       
+       // Test invalid data  
+       const invalidData = { data: 123 };  
+       expect(() => queue.validateJobData('testJobWithSchema', invalidData)).toThrow();  
+         
     });
 
     test('should handle job definition with dependencies', () => {
@@ -113,6 +120,12 @@ describe('PopQueue - Job Definition and Enqueue', () => {
         queue.define('testJobWithDependencies', jobFn, { dependencies: jobDependencies });
         expect(queue.runners['testJobWithDependencies'].fn).toBe(jobFn);
         expect(queue.jobDependencies['testJobWithDependencies']).toBe(jobDependencies);
+        const dependentJobFn = jest.fn();  
+    queue.define('dependentJob', dependentJobFn);  
+    
+    // Test execution order  
+   await queue.run('testJobWithDependencies');  
+   expect(dependentJobFn).toHaveBeenCalledBefore(jobFn);
     });
 
     test('should handle job definition with middleware', () => {
@@ -121,6 +134,11 @@ describe('PopQueue - Job Definition and Enqueue', () => {
         queue.define('testJobWithMiddleware', jobFn, { middleware });
         expect(queue.runners['testJobWithMiddleware'].fn).toBe(jobFn);
         expect(queue.runners['testJobWithMiddleware'].middleware).toBe(middleware);
+        // Test middleware execution  
+        const jobData = { data: 'test' };  
+        await queue.run('testJobWithMiddleware', jobData);  
+        expect(middleware).toHaveBeenCalledWith(jobData);  
+        expect(middleware).toHaveBeenCalledBefore(jobFn);
     });
 
     test('should handle job definition with custom collection name', () => {
