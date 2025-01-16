@@ -114,7 +114,7 @@ describe('PopQueue - Job Definition and Enqueue', () => {
          
     });
 
-    test('should handle job definition with dependencies', () => {
+    test('should handle job definition with dependencies', async () => {
         const jobFn = jest.fn();
         const jobDependencies = ['dependentJob'];
         queue.define('testJobWithDependencies', jobFn, { dependencies: jobDependencies });
@@ -128,7 +128,7 @@ describe('PopQueue - Job Definition and Enqueue', () => {
    expect(dependentJobFn).toHaveBeenCalledBefore(jobFn);
     });
 
-    test('should handle job definition with middleware', () => {
+    test('should handle job definition with middleware', async () => {
         const jobFn = jest.fn();
         const middleware = jest.fn();
         queue.define('testJobWithMiddleware', jobFn, { middleware });
