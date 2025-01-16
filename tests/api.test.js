@@ -1,13 +1,13 @@
 const request = require('supertest');
 const express = require('express');
-const { PopQueue } = require('../pop-queue/jobManagement');
+const { PopQueue } = require('../pop-queue/index');
+
 const api = require('./api');
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const path = require('path');
 const winston = require('winston');
-
-jest.mock('../pop-queue/jobManagement');
+jest.mock('../pop-queue/index');
 
 describe('API Endpoints', () => {
     let app;
