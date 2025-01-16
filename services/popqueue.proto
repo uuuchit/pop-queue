@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package popqueue;
+
+service PopQueueService {
+    rpc GetJobDetails (JobRequest) returns (JobResponse);
+}
+
+message JobRequest {
+    string jobName = 1;
+}
+
+message JobResponse {
+    repeated Job jobs = 1;
+}
+
+message Job {
+    string identifier = 1;
+    string data = 2;
+    string status = 3;
+    int32 priority = 4;
+    int32 attempts = 5;
+    string createdAt = 6;
+    string pickedAt = 7;
+    string finishedAt = 8;
+}

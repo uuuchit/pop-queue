@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function fetchJobDetails() {
     try {
-        const response = await fetch('/api/job-details');
+        const response = await fetch('http://localhost:3210/api/job-details');
         const jobDetails = await response.json();
         displayJobDetails(jobDetails);
     } catch (error) {
@@ -55,7 +55,7 @@ function displayJobDetails(jobDetails) {
 
 async function requeueJob() {
     try {
-        const response = await fetch('/api/requeue-job', { method: 'POST' });
+        const response = await fetch('http://localhost:3210/api/requeue-job', { method: 'POST' });
         if (response.ok) {
             alert('Job requeued successfully');
             fetchJobDetails();
@@ -72,7 +72,7 @@ async function requeueJob() {
 async function updateRateLimit(event) {
     try {
         const rateLimit = event.target.value;
-        const response = await fetch('/api/rate-limit', {
+        const response = await fetch('http://localhost:3210/api/rate-limit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ rateLimit })
@@ -92,7 +92,7 @@ async function updateRateLimit(event) {
 async function updateConcurrency(event) {
     try {
         const concurrency = event.target.value;
-        const response = await fetch('/api/concurrency', {
+        const response = await fetch('http://localhost:3210/api/concurrency', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ concurrency })
@@ -112,7 +112,7 @@ async function updateConcurrency(event) {
 async function updateRetryStrategy(event) {
     try {
         const retryStrategy = event.target.value;
-        const response = await fetch('/api/retry-strategy', {
+        const response = await fetch('http://localhost:3210/api/retry-strategy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ retryStrategy })
@@ -132,7 +132,7 @@ async function updateRetryStrategy(event) {
 async function updateBackoffStrategy(event) {
     try {
         const backoffStrategy = event.target.value;
-        const response = await fetch('/api/backoff-strategy', {
+        const response = await fetch('http://localhost:3210/api/backoff-strategy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ backoffStrategy })
@@ -152,7 +152,7 @@ async function updateBackoffStrategy(event) {
 async function updateJobProgress(event) {
     try {
         const jobProgress = event.target.value;
-        const response = await fetch('/api/job-progress', {
+        const response = await fetch('http://localhost:3210/api/job-progress', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ jobProgress })
@@ -172,7 +172,7 @@ async function updateJobProgress(event) {
 async function updateCompletionCallback(event) {
     try {
         const completionCallback = event.target.value;
-        const response = await fetch('/api/completion-callback', {
+        const response = await fetch('http://localhost:3210/api/completion-callback', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ completionCallback })
@@ -192,7 +192,7 @@ async function updateCompletionCallback(event) {
 async function updateSchemaValidation(event) {
     try {
         const schemaValidation = event.target.value;
-        const response = await fetch('/api/schema-validation', {
+        const response = await fetch('http://localhost:3210/api/schema-validation', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ schemaValidation })
@@ -212,7 +212,7 @@ async function updateSchemaValidation(event) {
 async function updateJobDependencies(event) {
     try {
         const jobDependencies = event.target.value;
-        const response = await fetch('/api/job-dependencies', {
+        const response = await fetch('http://localhost:3210/api/job-dependencies', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ jobDependencies })
@@ -232,7 +232,7 @@ async function updateJobDependencies(event) {
 async function updateFlowControl(event) {
     try {
         const flowControl = event.target.value;
-        const response = await fetch('/api/flow-control', {
+        const response = await fetch('http://localhost:3210/api/flow-control', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ flowControl })
@@ -252,7 +252,7 @@ async function updateFlowControl(event) {
 async function updateMetrics(event) {
     try {
         const metrics = event.target.value;
-        const response = await fetch('/api/metrics', {
+        const response = await fetch('http://localhost:3210/api/metrics', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ metrics })
@@ -272,7 +272,7 @@ async function updateMetrics(event) {
 async function updateJobEvents(event) {
     try {
         const jobEvents = event.target.value;
-        const response = await fetch('/api/job-events', {
+        const response = await fetch('http://localhost:3210/api/job-events', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ jobEvents })
@@ -292,7 +292,7 @@ async function updateJobEvents(event) {
 async function updateListeners(event) {
     try {
         const listeners = event.target.value;
-        const response = await fetch('/api/listeners', {
+        const response = await fetch('http://localhost:3210/api/listeners', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ listeners })

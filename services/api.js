@@ -1,14 +1,14 @@
 const express = require('express');
+const cors = require('cors');
 const { PopQueue } = require('../pop-queue/index');
+const queue = require('./queue');
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const path = require('path');
 const winston = require('winston');
 
 const app = express();
-const port = 3000;
-
-const queue = new PopQueue('mongodb://localhost:27017', 'redis://localhost:6379', 'myDatabase', 'myCollection', 3);
+const port = 3210;
 
 // Configure logging
 const logger = winston.createLogger({
@@ -21,6 +21,9 @@ const logger = winston.createLogger({
     ]
 });
 
+// Enable CORS
+app.use(cors());
+
 app.use(express.json());
 
 app.use((req, res, next) => {
@@ -30,7 +33,7 @@ app.use((req, res, next) => {
 
 app.get('/api/job-details', async (req, res) => {
     try {
-        const jobDetails = await queue.getCurrentQueue('myJob');
+        const jobDetails = await queue.getAllJobsPaginated({skip: 0, limit: 10});
         res.json(jobDetails);
     } catch (error) {
         logger.error('Error fetching job details:', error);
@@ -347,17 +350,25 @@ function redistributeJobs(call, callback) {
         });
 }
 
+// Implement the gRPC service
 const server = new grpc.Server();
-server.addService(popqueueProto.PopQueue.service, {
-    getJobDetails,
-    requeueJob,
-    registerWorker,
-    deregisterWorker,
-    redistributeJobs
+server.addService(popqueueProto.PopQueueService.service, {
+    GetJobDetails: async (call, callback) => {
+        try {
+            const jobDetails = await queue.getCurrentQueue(call.request.jobName);
+            callback(null, { jobs: jobDetails });
+        } catch (error) {
+            logger.error('Error fetching job details:', error);
+            callback(error);
+        }
+    }
 });
-server.bindAsync('0.0.0.0:50051', grpc.ServerCredentials.createInsecure(), () => {
+
+// Start the gRPC server
+const grpcPort = 50051;
+server.bindAsync(`0.0.0.0:${grpcPort}`, grpc.ServerCredentials.createInsecure(), () => {
+    console.log(`gRPC server running at http://0.0.0.0:${grpcPort}`);
     server.start();
-    console.log('gRPC server running at http://0.0.0.0:50051');
 });
 
 app.listen(port, () => {

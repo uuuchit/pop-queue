@@ -41,12 +41,16 @@ async function pushToBatchQueue(redisClient, documents, name) {
 
 async function popBatch(redisClient, redlock, name, batchSize) {
     try {
+        console.log("popBatch", name, batchSize);
         const pipeline = this.redisClient.pipeline();
+        
         for (let i = 0; i < batchSize; i++) {
+            console.log("pop:queue:", name);
             pipeline.zpopmin(`pop:queue:${name}`, 1);
         }
         const results = await pipeline.exec();
         const jobs = [];
+        console.log("results", results);
         for (const result of results) {
             const stringDocument = result[1];
             if (stringDocument.length === 0) {
@@ -65,9 +69,9 @@ async function popBatch(redisClient, redlock, name, batchSize) {
                     SET attempts = attempts + 1, pickedAt = $1
                     WHERE identifier = $2;
                 `;
-                await this.this.db.query(updateQuery, [pickedTime, document.identifier]);
+                await this.db.query(updateQuery, [pickedTime, document.identifier]);
             } else {
-                await this.this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({
+                await this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({
                     identifier: document.identifier
                 }, {
                     $inc: {
@@ -108,9 +112,9 @@ async function pop(redisClient, redlock, name) {
                 SET attempts = attempts + 1, pickedAt = $1
                 WHERE identifier = $2;
             `;
-            await this.this.db.query(updateQuery, [pickedTime, document.identifier]);
+            await this.db.query(updateQuery, [pickedTime, document.identifier]);
         } else {
-            await this.this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({
+            await this.db.collection(this.getDbCollectionName(name)).findOneAndUpdate({
                 identifier: document.identifier
             }, {
                 $inc: {
