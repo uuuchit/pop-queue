@@ -13,6 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('metrics').addEventListener('change', updateMetrics);
     document.getElementById('job-events').addEventListener('change', updateJobEvents);
     document.getElementById('listeners').addEventListener('change', updateListeners);
+    document.getElementById('job-progress').addEventListener('input', updateJobProgress);
+    document.getElementById('completion-callback').addEventListener('input', updateCompletionCallback);
+    document.getElementById('schema-validation').addEventListener('input', updateSchemaValidation);
+    document.getElementById('job-dependencies').addEventListener('input', updateJobDependencies);
+    document.getElementById('flow-control').addEventListener('input', updateFlowControl);
+    document.getElementById('metrics').addEventListener('input', updateMetrics);
+    document.getElementById('job-events').addEventListener('input', updateJobEvents);
+    document.getElementById('listeners').addEventListener('input', updateListeners);
 });
 
 async function fetchJobDetails() {
