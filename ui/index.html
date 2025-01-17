@@ -7,59 +7,7 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Job Management</h1>
-        <div id="job-details"></div>
-        <button id="requeue-job">Requeue Job</button>
-        <div>
-            <label for="rate-limit">Rate Limit:</label>
-            <input type="number" id="rate-limit" name="rate-limit">
-        </div>
-        <div>
-            <label for="concurrency">Concurrency:</label>
-            <input type="number" id="concurrency" name="concurrency">
-        </div>
-        <div>
-            <label for="retry-strategy">Retry Strategy:</label>
-            <input type="text" id="retry-strategy" name="retry-strategy">
-        </div>
-        <div>
-            <label for="backoff-strategy">Backoff Strategy:</label>
-            <input type="text" id="backoff-strategy" name="backoff-strategy">
-        </div>
-        <div>
-            <label for="job-progress">Job Progress:</label>
-            <input type="number" id="job-progress" name="job-progress">
-        </div>
-        <div>
-            <label for="completion-callback">Completion Callback:</label>
-            <input type="text" id="completion-callback" name="completion-callback">
-        </div>
-        <div>
-            <label for="schema-validation">Schema Validation:</label>
-            <input type="text" id="schema-validation" name="schema-validation">
-        </div>
-        <div>
-            <label for="job-dependencies">Job Dependencies:</label>
-            <input type="text" id="job-dependencies" name="job-dependencies">
-        </div>
-        <div>
-            <label for="flow-control">Flow Control:</label>
-            <input type="text" id="flow-control" name="flow-control">
-        </div>
-        <div>
-            <label for="metrics">Metrics:</label>
-            <input type="text" id="metrics" name="metrics">
-        </div>
-        <div>
-            <label for="job-events">Job Events:</label>
-            <input type="text" id="job-events" name="job-events">
-        </div>
-        <div>
-            <label for="listeners">Listeners:</label>
-            <input type="text" id="listeners" name="listeners">
-        </div>
-    </div>
+    <div id="root"></div>
     <script src="app.js"></script>
 </body>
 </html>
