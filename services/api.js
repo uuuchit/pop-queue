@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { PopQueue } = require('../pop-queue/index');
-const queue = require('./queue');
+const {queue, getAllJobsPaginated} = require('./queue');
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const path = require('path');
@@ -33,7 +33,7 @@ app.use((req, res, next) => {
 
 app.get('/api/job-details', async (req, res) => {
     try {
-        const jobDetails = await queue.getAllJobsPaginated({skip: 0, limit: 10});
+        const jobDetails = await getAllJobsPaginated({skip: 0, limit: 10});
         res.json(jobDetails);
     } catch (error) {
         logger.error('Error fetching job details:', error);
